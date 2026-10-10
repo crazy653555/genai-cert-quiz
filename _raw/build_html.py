@@ -64,6 +64,9 @@ template = """<!doctype html>
     line-height: 1.6;
   }
   .wrap { max-width: 720px; margin: 0 auto; padding: 20px 16px 60px; }
+  @media (min-width: 900px) {
+    .wrap { max-width: 760px; padding-top: 32px; }
+  }
   header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
   h1 { font-size: 20px; margin: 0; }
   h2 { font-size: 16px; margin: 0 0 4px; }
@@ -80,14 +83,17 @@ template = """<!doctype html>
   .src-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
   label.chk {
     display: flex; align-items: center; gap: 8px; font-size: 14px;
-    padding: 6px 8px; border-radius: 8px; cursor: pointer;
+    padding: 8px; border-radius: 8px; cursor: pointer; min-height: 40px;
   }
   label.chk:hover { background: var(--accent-weak); }
-  .toggle-row { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 10px; }
+  .toggle-row { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 10px; min-height: 32px; }
+  input[type="checkbox"] { width: 18px; height: 18px; flex: none; }
+  input[type="number"] { min-height: 36px; }
 
   button {
     font-size: 14px; border-radius: 8px; border: 1px solid var(--border);
     background: var(--card-bg); color: var(--text); padding: 10px 16px; cursor: pointer;
+    min-height: 44px; touch-action: manipulation;
   }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; width: 100%; padding: 12px; font-size: 15px; }
   button.secondary { width: 100%; margin-top: 10px; }
@@ -104,9 +110,10 @@ template = """<!doctype html>
   .options { display: flex; flex-direction: column; gap: 10px; }
   .option {
     display: flex; gap: 10px; align-items: flex-start; text-align: left;
-    padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; border: 1px solid var(--border); border-radius: 10px;
     background: var(--bg); color: var(--text); font-size: 15px; cursor: pointer;
     transition: border-color .15s, background .15s; width: 100%;
+    min-height: 48px; touch-action: manipulation;
   }
   .option:hover:not(:disabled) { border-color: var(--accent); }
   .option .letter {
@@ -151,6 +158,13 @@ template = """<!doctype html>
 
   footer { margin-top: 24px; font-size: 12px; color: var(--muted); text-align: center; }
   .hidden { display: none !important; }
+
+  @media (max-width: 400px) {
+    .card { padding: 16px; }
+    .question { font-size: 16px; }
+    h1 { font-size: 18px; }
+    .big-accuracy { font-size: 34px; }
+  }
 </style>
 </head>
 <body>
