@@ -1,0 +1,12 @@
+# 擷取用的暫存媒體檔（影片截圖、字幕原始檔），檔案較大且只是整理過程的佐證資料
+_raw/frames/
+_raw/frames_test/
+_raw/sheets/
+_raw/subs/
+_raw/tmp_batch/
+_raw/transcripts/
+_raw/*.jpg
+_raw/*.vtt
+_raw/fetch.log
+_raw/fetch_all.out
+_raw/*.mp4

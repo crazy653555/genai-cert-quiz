@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>生成式AI認證 隨機複習測驗</title>
+<style>
+  :root {
+    --bg: #f4f6fb;
+    --card-bg: #ffffff;
+    --text: #1b2430;
+    --muted: #6b7686;
+    --border: #e3e7ef;
+    --accent: #3b5bdb;
+    --accent-weak: #eef1fd;
+    --correct: #2f9e44;
+    --correct-weak: #ebfbee;
+    --wrong: #e03131;
+    --wrong-weak: #fff0f0;
+    --warn: #e8590c;
+    --warn-weak: #fff4e6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14171f; --card-bg: #1c2029; --text: #e7eaf1; --muted: #9aa3b2;
+      --border: #2b3040; --accent: #7c93ff; --accent-weak: #232a43;
+      --correct: #51cf66; --correct-weak: #14301c;
+      --wrong: #ff6b6b; --wrong-weak: #351414;
+      --warn: #ffa94d; --warn-weak: #332107;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14171f; --card-bg: #1c2029; --text: #e7eaf1; --muted: #9aa3b2;
+    --border: #2b3040; --accent: #7c93ff; --accent-weak: #232a43;
+    --correct: #51cf66; --correct-weak: #14301c;
+    --wrong: #ff6b6b; --wrong-weak: #351414;
+    --warn: #ffa94d; --warn-weak: #332107;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 20px 16px 60px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  h1 { font-size: 20px; margin: 0; }
+  h2 { font-size: 16px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; }
+
+  .card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px;
+  }
+  .card + .card { margin-top: 16px; }
+
+  fieldset { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin: 0 0 16px; }
+  legend { font-size: 13px; color: var(--muted); padding: 0 6px; }
+  .src-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+  label.chk {
+    display: flex; align-items: center; gap: 8px; font-size: 14px;
+    padding: 6px 8px; border-radius: 8px; cursor: pointer;
+  }
+  label.chk:hover { background: var(--accent-weak); }
+  .toggle-row { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 10px; }
+
+  button {
+    font-size: 14px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--card-bg); color: var(--text); padding: 10px 16px; cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; width: 100%; padding: 12px; font-size: 15px; }
+  button.secondary { width: 100%; margin-top: 10px; }
+  button:disabled { opacity: .5; cursor: default; }
+
+  .progress-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--muted); margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .progress-row b { color: var(--text); }
+  .bar-track { height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; margin-bottom: 16px; }
+  .bar-fill { height: 100%; background: var(--accent); transition: width .2s; }
+
+  .meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 10px; gap: 8px; flex-wrap: wrap; }
+  .tag { display: inline-block; background: var(--accent-weak); color: var(--accent); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
+  .question { font-size: 17px; font-weight: 600; margin: 0 0 16px; white-space: pre-wrap; }
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .option {
+    display: flex; gap: 10px; align-items: flex-start; text-align: left;
+    padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--bg); color: var(--text); font-size: 15px; cursor: pointer;
+    transition: border-color .15s, background .15s; width: 100%;
+  }
+  .option:hover:not(:disabled) { border-color: var(--accent); }
+  .option .letter {
+    flex: none; width: 24px; height: 24px; border-radius: 50%;
+    border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--muted);
+  }
+  .option.correct { border-color: var(--correct); background: var(--correct-weak); }
+  .option.correct .letter { border-color: var(--correct); color: var(--correct); }
+  .option.wrong { border-color: var(--wrong); background: var(--wrong-weak); }
+  .option.wrong .letter { border-color: var(--wrong); color: var(--wrong); }
+  .option:disabled { cursor: default; }
+
+  .result-box { margin-top: 16px; }
+  .result-banner { font-weight: 700; font-size: 15px; margin-bottom: 8px; }
+  .result-banner.correct { color: var(--correct); }
+  .result-banner.wrong { color: var(--wrong); }
+  .explanation {
+    font-size: 14px; color: var(--text); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; white-space: pre-wrap;
+  }
+  .caveat {
+    margin-top: 10px; font-size: 13px; color: var(--warn); background: var(--warn-weak);
+    border: 1px solid var(--warn); border-radius: 10px; padding: 10px 14px; white-space: pre-wrap;
+  }
+  .next-row { margin-top: 18px; }
+
+  .summary-stat { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 15px; }
+  .summary-stat:last-child { border-bottom: none; }
+  .big-accuracy { font-size: 40px; font-weight: 800; color: var(--accent); text-align: center; margin: 6px 0 2px; }
+
+  .review-item {
+    border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 12px;
+  }
+  .review-item .meta { margin-bottom: 8px; }
+  .review-item .question { font-size: 15px; margin-bottom: 10px; }
+  .review-line { font-size: 14px; margin: 4px 0; }
+  .review-line .your-ans { color: var(--wrong); font-weight: 600; }
+  .review-line .correct-ans { color: var(--correct); font-weight: 600; }
+  .review-explanation { font-size: 13px; color: var(--muted); margin-top: 8px; white-space: pre-wrap; }
+  .no-wrong { text-align: center; color: var(--muted); padding: 20px 0; }
+
+  footer { margin-top: 24px; font-size: 12px; color: var(--muted); text-align: center; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>生成式AI能力認證 複習測驗</h1>
+      <div class="sub">題庫共 <span id="totalAll">0</span> 題</div>
+    </div>
+  </header>
+
+  <!-- ===== Setup screen ===== -->
+  <div class="card" id="setupScreen">
+    <h2>開始前先設定</h2>
+    <p class="sub" style="margin-top:0;">選好來源與選項設定後開始，題目會隨機排序且不重複，直到該範圍內題目全部出完。</p>
+
+    <fieldset>
+      <legend>考試來源（可複選）</legend>
+      <div class="src-grid" id="sourceGrid"></div>
+    </fieldset>
+
+    <div class="toggle-row">
+      <input type="checkbox" id="randomizeOptions" checked>
+      <label for="randomizeOptions">選項隨機排序（關閉則維持 A/B/C/D 原始順序）</label>
+    </div>
+    <div class="toggle-row">
+      <input type="checkbox" id="excludeCaveat">
+      <label for="excludeCaveat">排除有 ⚠️ 爭議備註的題目</label>
+    </div>
+
+    <div class="toggle-row" style="flex-wrap:wrap;">
+      <input type="checkbox" id="limitEnabled">
+      <label for="limitEnabled">限制本次出題數（隨機抽選，不重複）：</label>
+      <input type="number" id="limitCount" min="1" value="80" style="width:80px; padding:6px 8px; border-radius:8px; border:1px solid var(--border); background:var(--card-bg); color:var(--text);" disabled>
+      <span class="sub">題</span>
+    </div>
+
+    <p class="sub">本次範圍共 <b id="poolCount">0</b> 題，實際出題 <b id="effectiveCount">0</b> 題</p>
+    <button class="primary" id="startBtn">開始測驗</button>
+  </div>
+
+  <!-- ===== Quiz screen ===== -->
+  <div id="quizScreen" class="hidden">
+    <div class="progress-row">
+      <span>進度：<b id="progressText">0 / 0</b></span>
+      <span>答對：<b id="correctCount">0</b>　正確率：<b id="accuracy">0%</b></span>
+    </div>
+    <div class="bar-track"><div class="bar-fill" id="progressBar" style="width:0%"></div></div>
+
+    <div class="card">
+      <div class="meta">
+        <span class="tag" id="currentSource"></span>
+        <span class="tag" id="currentTopic"></span>
+        <span id="currentId"></span>
+      </div>
+      <p class="question" id="questionText"></p>
+      <div class="options" id="optionsBox"></div>
+
+      <div class="result-box hidden" id="resultBox">
+        <div class="result-banner" id="resultBanner"></div>
+        <div class="explanation" id="explanationText"></div>
+        <div class="caveat hidden" id="caveatText"></div>
+      </div>
+
+      <div class="next-row">
+        <button class="primary" id="nextBtn" disabled>下一題</button>
+      </div>
+    </div>
+    <button class="secondary" id="backToSetupBtn">結束測驗並看結果</button>
+  </div>
+
+  <!-- ===== Summary screen ===== -->
+  <div id="summaryScreen" class="hidden">
+    <div class="card">
+      <h2>測驗結束</h2>
+      <div class="big-accuracy" id="summaryAccuracy">0%</div>
+      <div class="summary-stat"><span>已作答</span><b id="summaryTotal">0</b></div>
+      <div class="summary-stat"><span>答對</span><b id="summaryCorrect">0</b></div>
+      <div class="summary-stat"><span>答錯</span><b id="summaryWrong">0</b></div>
+      <button class="primary" id="restartSameBtn" style="margin-top:16px;">用同樣設定再測一次</button>
+      <button class="secondary" id="backSetupFromSummaryBtn">重新選擇設定</button>
+    </div>
+
+    <div class="card" id="reviewCard">
+      <h2>答錯題目重新整理</h2>
+      <div id="reviewList"></div>
+    </div>
+  </div>
+
+  <footer>資料來源：資策會生成式AI能力認證解題影片／AI白話拆解×認證實戰通關密笈 整理（含人工重建與勘誤備註，應試前請以官方題庫為準）</footer>
+</div>
+
+<script>
+const QUESTIONS = [{"id": 1, "source": "題庫01", "topic": "綜合", "question": "在教育領域，以下哪個選項為AI聲音複製技術的實際應用？", "option_a": "模仿名師授課", "option_b": "電子書生成", "option_c": "分析課程教學成效", "option_d": "分析學生情緒", "correct_option": "A", "explanation": "利用少量名師語音樣本訓練語音模型（Voice Cloning / TTS），即可自動合成名師音色與語調進行授課。", "has_caveat": 0, "caveat_note": null}, {"id": 2, "source": "題庫01", "topic": "綜合", "question": "在AI生成內容領域中，「NLP」代表什麼？", "option_a": "Neural Linguistic Programming", "option_b": "Nested Learning Protocol", "option_c": "Natural Language Processing", "option_d": "Networked Language Processing", "correct_option": "C", "explanation": "中文為「自然語言處理」，是大型語言模型與人機文本互動的核心領域；選項A為心理學身心語言程式學，為常見陷阱項。", "has_caveat": 0, "caveat_note": null}, {"id": 3, "source": "題庫01", "topic": "綜合", "question": "AI生成內容是指基於哪個技術來生成各種形式的內容和資料？", "option_a": "模糊邏輯", "option_b": "雷達掃描", "option_c": "深度學習 (Deep Learning, DL)", "option_d": "視覺辨識", "correct_option": "C", "explanation": "生成式AI（文字、圖像、音訊等生成）均奠基於多層深度類神經網絡（如Transformer、Diffusion等）的深度學習技術。", "has_caveat": 0, "caveat_note": null}, {"id": 4, "source": "題庫01", "topic": "綜合", "question": "在生成式AI簡報生成中，提供主題推薦功能時所使用的技術是什麼？", "option_a": "深度學習 (Deep Learning, DL)", "option_b": "擴增實境 (Augmented Reality, AR)", "option_c": "協同過濾 (Collaborative Filtering)", "option_d": "自然語言處理 (Natural Language Processing, NLP)", "correct_option": "D", "explanation": "理解關鍵字語意並自動擴展相關大綱與主題推薦，屬於NLP的語意理解與自然語言生成範疇。\n\n> ⚠️ 爭議備註：題目問「主題推薦」，若是依使用者行為做推薦，業界常用「協同過濾」；但此題情境為根據輸入關鍵字/大綱語意展開主題，屬內容式推薦（Content-based），故NLP合理。建議複習時留意題目情境差異。", "has_caveat": 1, "caveat_note": "題目問「主題推薦」，若是依使用者行為做推薦，業界常用「協同過濾」；但此題情境為根據輸入關鍵字/大綱語意展開主題，屬內容式推薦（Content-based），故NLP合理。建議複習時留意題目情境差異。\n\n---"}, {"id": 5, "source": "題庫01", "topic": "綜合", "question": "在利用人工智慧生成內容時，必須遵守相關國際法規，以美國《健康保險可攜性和責任法案》(HIPAA)為例，處理健康相關資料時，應該採取哪些關鍵措施？", "option_a": "將所有資料保存於紙質檔案", "option_b": "未經授權將患者資料公開", "option_c": "使用加密技術保護患者資料", "option_d": "僅在非商業用途時保護資料", "correct_option": "C", "explanation": "HIPAA安全規範明定，受保護健康資訊（PHI）在儲存與傳輸過程中必須透過高強度加密技術與存取權限控管來確保安全性。", "has_caveat": 0, "caveat_note": null}, {"id": 6, "source": "題庫01", "topic": "綜合", "question": "大語言模型 (LLM) 在確定性技術路徑中，表現改進的關鍵是什麼？", "option_a": "減少訓練資料量", "option_b": "擴展多樣化的語言模式和結構", "option_c": "增加模型參數", "option_d": "提高運算能力", "correct_option": "B", "explanation": "模型內在表現提升的核心在於學習多樣化的語言模式、語法結構與知識表徵，增強跨領域的泛化理解能力。\n\n> ⚠️ 爭議備註：此題表述較模糊，「增加模型參數」「提高運算能力」亦是業界公認的Scaling Laws關鍵因素。官方給的答案偏向「資料/語言模式多樣性」而非參數規模，建議留意此題可能有翻譯/用詞模糊問題，複習時三個選項（B/C/D）都要理解其角色。", "has_caveat": 1, "caveat_note": "此題表述較模糊，「增加模型參數」「提高運算能力」亦是業界公認的Scaling Laws關鍵因素。官方給的答案偏向「資料/語言模式多樣性」而非參數規模，建議留意此題可能有翻譯/用詞模糊問題，複習時三個選項（B/C/D）都要理解其角色。\n\n---"}, {"id": 7, "source": "題庫01", "topic": "綜合", "question": "在處理涉及個人敏感資訊的AI生成內容時，根據歐盟《一般資料保護規範》(GDPR)，下列哪一項是必須的？", "option_a": "對資料進行匿名化處理", "option_b": "僅在本地儲存資料", "option_c": "僅使用免費的安全工具", "option_d": "將資料定期公開", "correct_option": "A", "explanation": "GDPR強調隱私保護與資料最小化原則，在處理敏感資料與AI訓練輸入時，去識別化與匿名化（Anonymization）是法定必備措施。", "has_caveat": 0, "caveat_note": null}, {"id": 8, "source": "題庫01", "topic": "綜合", "question": "在AI生成內容中，資料應如何訓練較好？", "option_a": "資料量越多越好", "option_b": "資料量多寡不影響訓練品質", "option_c": "資料量越少越好", "option_d": "資料量適中較好", "correct_option": "A", "explanation": "此題庫考點立足於「大數據（Big Data）與擴展法則（Scaling Laws）」，強調巨量資料對基礎模型學習泛化表徵的重要性。\n\n> ⚠️ 爭議備註：嚴格來說業界近年更強調「資料品質 > 資料量」（如LLaMA、Phi系列小模型高品質資料的實驗），但就此考試的出題邏輯（偏傳統Big Data觀點），標準答案為A，應試時以題庫答案為準。", "has_caveat": 1, "caveat_note": "嚴格來說業界近年更強調「資料品質 > 資料量」（如LLaMA、Phi系列小模型高品質資料的實驗），但就此考試的出題邏輯（偏傳統Big Data觀點），標準答案為A，應試時以題庫答案為準。\n\n---"}, {"id": 9, "source": "題庫01", "topic": "綜合", "question": "哪種AI生成內容技術可以幫助學生生成書面報告和研究論文？", "option_a": "圖片處理技術", "option_b": "自然語言處理", "option_c": "資料壓縮技術", "option_d": "語音辨識技術", "correct_option": "B", "explanation": "書面報告與論文屬於長篇文字產出，背後核心技術為自然語言處理（NLP / NLG）。", "has_caveat": 0, "caveat_note": null}, {"id": 10, "source": "題庫01", "topic": "綜合", "question": "提示工程在AI應用中的一個主要挑戰是什麼？", "option_a": "缺乏可用資料", "option_b": "過度擬合(Overfitting)人工智慧模型", "option_c": "設計與使用模型最匹配的輸入內容", "option_d": "確保使用者隱私", "correct_option": "C", "explanation": "提示工程不需調整模型權重，其本質挑戰在於設計合適的措辭、結構與格式，使其與特定模型的理解與推理機制相契合。", "has_caveat": 0, "caveat_note": null}, {"id": 11, "source": "題庫01", "topic": "綜合", "question": "Canva的哪個功能可以幫助簡報排版更優美？", "option_a": "配色工具", "option_b": "套用智慧模板", "option_c": "字體樣式選擇", "option_d": "圖像編輯工具", "correct_option": "B", "explanation": "智慧模板（Smart Templates）結合自動化排版與佈局結構，能一鍵完成文字層次、圖文配比與整體視覺的美化。", "has_caveat": 0, "caveat_note": null}, {"id": 12, "source": "題庫02", "topic": "倫理與法律", "question": "根據歐盟可信任AI倫理準則，何者不是四大倫理原則之一？", "option_a": "公平性", "option_b": "尊重AI決策正確性", "option_c": "避免傷害", "option_d": "可解釋性", "correct_option": "B", "explanation": "歐盟可信任AI四大倫理原則為尊重人類自主、避免傷害、公平性、可解釋性；選項B「尊重AI決策正確性」聽起來像是系統效能或準確率的要求，屬於技術或效能面的期待，而非官方倫理原則。", "has_caveat": 0, "caveat_note": null}, {"id": 13, "source": "題庫02", "topic": "倫理與法律", "question": "可信任AI倫理準則中，所強調的「透明度」是指？", "option_a": "系統性能透明", "option_b": "資金使用透明", "option_c": "開發過程和決策的可解釋性", "option_d": "市場透明", "correct_option": "C", "explanation": "在可信任AI倫理中，「透明度」是指讓人能理解AI是如何被開發出來，以及為什麼做出某個決策，重點在於可解釋性與可追溯性，不是系統性能、資金使用或市場資訊的公開。", "has_caveat": 0, "caveat_note": null}, {"id": 14, "source": "題庫02", "topic": "倫理與法律", "question": "根據歐盟可信任AI倫理準則，下列敘述何者符合問責制需求？", "option_a": "「有人負責」：AI系統要有明確責任歸屬", "option_b": "「有人監督」：需要監管、稽核或審查機制", "option_c": "「出問題可追查」：發生風險時可以追溯原因並處理", "option_d": "（畫面僅完整呈現三個選項）", "correct_option": "A", "explanation": "問責制就是AI不能沒有人管，也不能出錯後找不到人負責。政府設立AI監管機制，代表有制度來監督、檢查與追蹤責任，所以「有人負責」最符合問責制需求。", "has_caveat": 1, "caveat_note": "原始畫面僅完整顯示三個選項（有人負責／有人監督／出問題可追查），第四個選項的文字未在畫面中出現，可能是影片剪輯省略或此題選項數與其他題不同。正確答案A「有人負責」為問責制的核心定義應無疑義，但完整四選項內容無法由畫面確認，建議對照官方題庫核實題目選項總數與第4項內容。"}, {"id": 15, "source": "題庫02", "topic": "倫理與法律", "question": "國際人工智慧倫理原則發展，下列哪一個不是其原則？", "option_a": "以人為中心", "option_b": "可信任", "option_c": "問責制", "option_d": "資料共享", "correct_option": "D", "explanation": "國際人工智慧倫理原則通常著重於「以人為中心」的價值、「可信任」的系統特性，以及「問責制」所強調的責任與可追溯性。「資料共享」則較偏向治理或實務作法（如促進創新、資料開放、跨域合作等），屬於如何管理與運用資料的策略或手段，而非倫理價值本身，因此不是核心倫理原則。", "has_caveat": 0, "caveat_note": null}, {"id": 16, "source": "題庫02", "topic": "倫理與法律", "question": "下列何者是隱私保護的做法？", "option_a": "資料去識別化", "option_b": "資料加密", "option_c": "數據最小化", "option_d": "以上皆是", "correct_option": "D", "explanation": "去識別化能降低個人被辨識的機會，加密能保護資料在傳輸或儲存時不被看懂，數據最小化能避免收集太多不必要的個資，三者都能降低隱私外洩風險，因此最完整答案就是「以上皆是」。", "has_caveat": 0, "caveat_note": null}, {"id": 17, "source": "題庫02", "topic": "倫理與法律", "question": "在人工智慧/生成式AI應用前，以下何者是錯誤的評估面向？", "option_a": "使AI的應用符合法制要求與目標", "option_b": "建立資料主體對於資料利用過程之信任", "option_c": "考量運用AI時消耗之資源，對於環境造成之影響", "option_d": "無須注意生成式AI產品之利用成果與著作權歸屬問題", "correct_option": "D", "explanation": "在使用AI前，應先檢查是否合法、能否建立資料信任、是否有環境影響，這些都是重要的評估面向。只有第4項說「不用注意生成結果與著作權歸屬」是錯的，因為生成式AI可能牽涉內容使用、成果利用與著作權等問題，實際上必須特別留意。", "has_caveat": 0, "caveat_note": null}, {"id": 18, "source": "題庫02", "topic": "倫理與法律", "question": "生成式AI技術訓練和應用過程中會涉及大量個人資料，以下哪一作法可以防範？", "option_a": "資料去識別化", "option_b": "數據最大化", "option_c": "資料解密", "option_d": "存取控制開放", "correct_option": "A", "explanation": "生成式AI在訓練和應用時，可能會用到很多個人資料。重要的防護作法就是「去識別化」：把可以直接或間接識別個人的資訊移除或遮蔽（例如姓名、身分證字號、電話號碼、住址等），讓人更難辨識出特定個人，降低個資外洩的風險。「數據最大化」代表蒐集越多資料越好，反而會增加個資暴露與濫用的風險；「資料解密」是把受保護的資料打開，讓內容更容易被看，並不會讓資料更安全；「存取控制開放」表示太多人可以存取資料，越多人接觸，個資被濫用或外洩的機會就越高。", "has_caveat": 0, "caveat_note": null}, {"id": 19, "source": "題庫02", "topic": "倫理與法律", "question": "2024年4月歐盟公布《人工智慧法》（Artificial Intelligence Act）重要性為何？", "option_a": "著重在歐盟價值與基本權利、倫理、以及可信任", "option_b": "直接適用於歐盟全境，立法方式針對人工智慧進行監管的首例", "option_c": "促進自發將可信賴性納入人工智慧產品、服務及系統之設計、開發、使用與評估", "option_d": "培養公眾對人工智慧使用的信任和信心", "correct_option": "B", "explanation": "這題問的是《人工智慧法》的「重要性」，關鍵在於它是正式立法，而且可直接適用全歐盟，因此最符合的是第2項。選項1、3、4都是歐盟在生成式AI治理方向上值得重視的價值或目標，但最能代表此法「重要性」的是它作為全球首部具法律拘束力、直接適用全歐盟的AI監管立法。", "has_caveat": 0, "caveat_note": null}, {"id": 20, "source": "題庫02", "topic": "倫理與法律", "question": "臺灣已提出對於生成式AI的規範藍圖，何者非臺灣提出之規範？", "option_a": "行政院透過「行政院及所屬機關（構）使用生成式AI參考指引」", "option_b": "金融監督管理委員會公布「金融業運用人工智慧（AI）之核心原則與相關推動政策」", "option_c": "臺灣相關行政機關根據現有法制提出了可能產生風險的概要", "option_d": "專利商標局「文本和數據挖掘（text and data mining）」之合法性界線", "correct_option": "D", "explanation": "選項A～C都是臺灣在生成式AI治理方向上的具體作為：A是行政院層級的使用指引，提供各機關使用生成式AI的參考；B是金融監理機關針對金融業運用AI所訂定的原則與政策；C則是相關行政機關依現有法制，對AI可能產生風險的概要說明，屬於風險辨識與治理方向。相較之下，選項D「專利商標局『文本和數據挖掘』之合法性界線」主要是關於智慧財產權領域中，文本和數據挖掘的法律界線與合法性判斷，屬於著作權／專利等知識產權的法律議題，並非臺灣針對生成式AI所提出的規範藍圖項目。", "has_caveat": 0, "caveat_note": null}, {"id": 21, "source": "題庫03", "topic": "應用技能", "question": "下列何者可以幫助創作專業的商業文案？", "option_a": "ChatGPT", "option_b": "Hemingway Editor", "option_c": "SummarizeBot", "option_d": "DeepL", "correct_option": "A", "explanation": "ChatGPT能協助生成專業的商業文案，例如產品描述、廣告文案、標語（slogan）、促銷文案與行銷點子等。Hemingway Editor主要功能是提升可讀性與編輯品質，並非生成文案；SummarizeBot主要功能是摘要與濃縮內容；DeepL主要功能是翻譯語言，皆非生成原創文案的最佳選擇。", "has_caveat": 0, "caveat_note": null}, {"id": 22, "source": "題庫03", "topic": "應用技能", "question": "AI生成內容（GAI）中的自然語言處理技術可以用於哪種應用？", "option_a": "圖片分類", "option_b": "文字摘要", "option_c": "3D建模", "option_d": "音訊處理", "correct_option": "B", "explanation": "自然語言處理（NLP）專注在理解與處理人類語言，所以可以用來做文字相關的工作，例如摘要文章重點、擷取關鍵資訊、整理長篇內容。圖片分類屬於電腦視覺（Computer Vision）領域，與文字處理不同；3D建模著重在建立三維物體與空間結構；音訊處理主要與語音/聲音技術有關，皆非以文字為核心的NLP應用。", "has_caveat": 0, "caveat_note": null}, {"id": 23, "source": "題庫03", "topic": "應用技能", "question": "下列何者是生成式AI以生成文字為主的工具？", "option_a": "ChatGPT", "option_b": "Sora", "option_c": "MyEdit", "option_d": "Freepik", "correct_option": "A", "explanation": "ChatGPT主要是以生成文字為核心的AI工具，最常見的用途就是聊天問答、寫文案、整理重點、撰寫文章、腳本或企劃內容，所以最符合「以生成文字為主」這個描述。Sora主要偏向影片生成；MyEdit比較偏向影像、音訊或多媒體編修與AI創作；Freepik則更偏向設計素材與圖像資源平台。", "has_caveat": 0, "caveat_note": null}, {"id": 24, "source": "題庫03", "topic": "應用技能", "question": "生成式對抗網路（GAN）中「對抗性訓練」的目的是什麼？", "option_a": "減少圖片中的雜訊", "option_b": "提高模型抵禦對抗性攻擊的穩定性", "option_c": "透過網路之間的競爭產生高品質的圖片", "option_d": "壓縮大型圖片資料集", "correct_option": "C", "explanation": "GAN有兩個網路：生成器（Generator）想要生成圖片，鑑別器（Discriminator）想要判斷圖片是真還是假。它們會一直互相競爭，生成器想騙過鑑別器，鑑別器想抓出假的，這種「對抗性訓練」讓生成器越來越厲害，能產生越來越逼真、品質越來越高的圖片。減少圖片中的雜訊屬於去噪（Denoising）的任務；提高模型抵禦對抗性攻擊的穩定性是對抗樣本防禦的議題；壓縮大型圖片資料集是資料壓縮的任務，三者皆與GAN的核心目的不同。", "has_caveat": 0, "caveat_note": null}, {"id": 25, "source": "題庫03", "topic": "應用技能", "question": "下列哪一種AI技術用於填滿圖片的缺失部分？", "option_a": "圖片修復", "option_b": "圖片過濾", "option_c": "圖片剪裁", "option_d": "圖片大小調整", "correct_option": "A", "explanation": "當圖片出現刮痕、破洞、缺角或受損的區域時，會用到「圖片修復」。AI會分析周圍的像素、紋理、顏色與結構，然後智慧地填補缺失的部分，讓圖片看起來自然、完整，就像原本就沒有受損一樣。圖片過濾主要是改變圖片的外觀風格、色調或效果，並不會填補缺失的部分；圖片剪裁是把圖片中不需要的部分裁掉，只會移除內容，不會補回缺失；圖片大小調整是改變圖片的尺寸（放大或縮小），不會產生或填補新的內容。", "has_caveat": 0, "caveat_note": null}, {"id": 26, "source": "題庫03", "topic": "應用技能", "question": "哪個模型專門用於生成新圖片？", "option_a": "GAP", "option_b": "DNN", "option_c": "GAN", "option_d": "RNN", "correct_option": "C", "explanation": "GAN是生成式對抗網路，專門透過生成器與鑑別器彼此競爭，學會產生新的、看起來像真的圖片。GAP不是圖片生成模型名稱；DNN是較廣泛的深度神經網路概念，並非專門用來生成新圖片的模型；RNN主要處理序列資料，例如文字或時間序列，不是專門生成新圖片的代表模型。", "has_caveat": 0, "caveat_note": null}, {"id": 27, "source": "題庫03", "topic": "應用技能", "question": "下列哪一個生成式AI模型適合用於繪本創作？", "option_a": "Photoshop", "option_b": "Stable Diffusion", "option_c": "Excel", "option_d": "Word", "correct_option": "B", "explanation": "Stable Diffusion是生成式AI圖像模型，能根據文字提示（Prompt）自動生成插畫與圖像，非常適合繪本創作。Photoshop主要用來後製與編修圖片；Excel是試算表與資料表工具；Word則是文字文件編輯軟體，所以都不是用來生成繪本圖像的最佳選擇。", "has_caveat": 0, "caveat_note": null}, {"id": 28, "source": "題庫03", "topic": "應用技能", "question": "在生成式AI的應用中，與我們息息相關的汽車導航上應用到什麼技術？", "option_a": "文字生成", "option_b": "文字摘要", "option_c": "圖片生成文字", "option_d": "語音合成", "correct_option": "D", "explanation": "汽車導航會把路線、道路名稱、轉彎指示和預計到達時間，用「語音」念出來告訴駕駛，這就是語音合成的應用：把系統資訊轉成自然的聲音，引導我們開車。文字生成是寫出文字；文字摘要是把長文濃縮；圖片生成文字是描述或辨識圖片，都不是導航最常用、最直接讓我們感受到的「開口說話」語音指引。", "has_caveat": 0, "caveat_note": null}, {"id": 29, "source": "題庫03", "topic": "應用技能", "question": "下列各生成式工具中，哪個是聲音生成工具？", "option_a": "Sora", "option_b": "Suno", "option_c": "GitHub Copilot", "option_d": "Midjourney", "correct_option": "B", "explanation": "Suno是專注於音樂與聲音（語音/音訊）生成的生成式AI工具，使用者只要輸入文字提示，就能生成歌曲或音訊。Sora主要用於影片生成，GitHub Copilot主要用於程式碼輔助，Midjourney主要用於圖片生成，因此聲音生成工具是Suno。", "has_caveat": 1, "caveat_note": "原始畫面選項A的文字顯示為「Sroa」，對照影片解析文字「Sroa（或寫作Sora）」判斷應為「Sora」之筆誤，整理時已校正為Sora，供使用者參考核對。"}, {"id": 30, "source": "題庫03", "topic": "應用技能", "question": "請問以下哪項技術是將文字資訊轉換為人類語音？", "option_a": "自然語言處理（Natural Language Processing, NLP）", "option_b": "語音合成（Text-to-Speech, TTS）", "option_c": "語音辨識（Speech-to-Text, STT）", "option_d": "機器翻譯（Machine Translation, MT）", "correct_option": "B", "explanation": "語音合成（TTS）是把寫好的文字轉換成自然的人類語音輸出的技術，常見應用包括導航語音、朗讀文章、AI語音助理等。自然語言處理（NLP）是一個更廣泛的技術領域，著重在理解、分析與產生語言，不等同於把文字變成聲音；語音辨識（STT）是把「語音」轉換成「文字」，方向相反；機器翻譯（MT）是把一種語言的文字翻譯成另一種語言的文字，不會產生語音。", "has_caveat": 0, "caveat_note": null}, {"id": 31, "source": "題庫03", "topic": "應用技能", "question": "下列何者為AI生成內容（GAI）影片生成模型工具？", "option_a": "Akasha", "option_b": "BreeXe", "option_c": "Groq", "option_d": "Sora", "correct_option": "D", "explanation": "Sora是用來生成影片的AI工具，可以依照文字提示產生影片畫面。題目問的是「影片生成模型工具」，所以最符合的是Sora；Akasha、BreeXe、Groq皆不是本題要問的影片生成模型工具。", "has_caveat": 0, "caveat_note": null}, {"id": 32, "source": "題庫03", "topic": "應用技能", "question": "OpenAI的Sora是屬於什麼軟體？", "option_a": "文生圖：把文字變圖片", "option_b": "圖片生成：產生靜態圖片", "option_c": "文字生成影片：把文字提示變成影片", "option_d": "自然語言處理：處理文字理解與生成，非影片工具", "correct_option": "C", "explanation": "Sora的重點是根據文字提示生成影片，或動態畫面，所以符合題意的是「文字生成影片」。文生圖是把文字變圖片、圖片生成是產生靜態圖片、自然語言處理是處理文字理解與生成，三者皆非影片生成工具，與題意不符。", "has_caveat": 0, "caveat_note": null}, {"id": 33, "source": "題庫03", "topic": "應用技能", "question": "下列何者不是生成式AI影片生成工具？", "option_a": "ChatGPT", "option_b": "Flexclip", "option_c": "Sora", "option_d": "Runway ML", "correct_option": "A", "explanation": "ChatGPT是一個以文字為主的對話與內容生成工具，可以回答問題、寫文章、翻譯、整理資料等，但它不是專門用來生成影片的工具。Flexclip、Sora、Runway ML都與影片創作或AI影片生成有關，可以協助製作、編輯或自動生成影片內容，因此不是生成式AI影片工具的是選項A。", "has_caveat": 0, "caveat_note": null}, {"id": 34, "source": "題庫03", "topic": "應用技能", "question": "Sora是一個能以文字描述生成影片的人工智慧模型，其開發公司為？", "option_a": "OpenAI", "option_b": "Microsoft", "option_c": "Google", "option_d": "Apple", "correct_option": "A", "explanation": "Sora是一個能「以文字描述生成影片」的人工智慧模型，由OpenAI開發。Microsoft、Google、Apple都是很厲害的科技公司，但這一題問的是「Sora是由誰開發的」，所以答案是OpenAI。", "has_caveat": 0, "caveat_note": null}, {"id": 35, "source": "題庫03", "topic": "應用技能", "question": "AI可以幫助優化簡報的哪個方面？", "option_a": "設計排版", "option_b": "程式碼編寫", "option_c": "網頁瀏覽", "option_d": "資料庫管理", "correct_option": "A", "explanation": "AI最能幫助的，就是簡報的設計排版！它可以幫我們自動安排文字與圖片的位置，讓版面更整齊；推薦合適的配色與字體，讓簡報更美觀；調整層次與重點（例如標題、內文大小），讓內容更清楚；套用專業的版型與圖示，讓簡報更吸引人。程式碼編寫雖然AI確實能幫助寫程式，但這與優化簡報設計排版沒有直接關係；網頁瀏覽是取得資料的管道，不是簡報優化的重點；資料庫管理可協助資料處理，與簡報的版面設計無關。", "has_caveat": 0, "caveat_note": null}, {"id": 36, "source": "題庫03", "topic": "應用技能", "question": "AI生成簡報的哪個功能可以幫助提高視覺吸引力？", "option_a": "設計優化", "option_b": "語音辨識", "option_c": "自然語言處理", "option_d": "機器翻譯", "correct_option": "A", "explanation": "「設計優化」可以幫助提高簡報的視覺吸引力，因為AI能協助做到版面配置更整齊平衡、色彩搭配更協調美觀、字體選擇更清晰易讀、視覺層次重點更突出、圖示/圖片配置增強視覺效果、整體美感讓簡報更吸晴，因此能讓投影片更清楚、有重點且更吸引觀眾注意力。語音辨識是將語音轉成文字，主要用於輸入或記錄，與視覺美觀無直接關係；自然語言處理幫助理解或生成文字內容，重點在「文字」而非「視覺設計」；機器翻譯將文字翻成其他語言，幫助跨語言溝通，與視覺吸引力無直接關聯。", "has_caveat": 0, "caveat_note": null}, {"id": 37, "source": "題庫03", "topic": "應用技能", "question": "聊天機器人的上下文管理在AI生成內容（GAI）中起到什麼作用？", "option_a": "追蹤對話狀態", "option_b": "加強互動體驗", "option_c": "分析數據", "option_d": "增加運算量", "correct_option": "A", "explanation": "上下文管理的核心功能是追蹤先前的對話內容、用戶意圖與當前對話狀態，讓聊天機器人知道「已經說了什麼」與「現在在聊什麼」，從而正確理解並延續對話。加強互動體驗是可能的結果，因為機器人能更貼近情境、給出更合適的回應，但這不是它的主要角色；分析數據是資料處理或後續分析的工作，不是上下文管理的核心功能；增加運算量與上下文管理無直接關係，並非其作用所在。", "has_caveat": 1, "caveat_note": "原始畫面選項D文字顯示為「增加運算輛」，對照上下文判斷應為「增加運算量」之筆誤，整理時已校正。"}, {"id": 38, "source": "題庫03", "topic": "應用技能", "question": "使用AI生成程式碼時，以下哪個步驟通常不是必須的？", "option_a": "理解問題描述和需求", "option_b": "請AI生成初版程式碼", "option_c": "人工修改和優化程式碼（含生成單元測試程式碼）", "option_d": "手動調試和測試程式碼", "correct_option": "C", "explanation": "使用AI寫程式時，真正重要的是先把需求想清楚，再檢查AI產出的內容，最後自己測試與除錯。這三件事幾乎每次都需要，因為它們會直接影響程式是否符合需求、能不能執行，以及是否安全。單元測試也很重要，尤其在大型專案、長期維護或多人協作時特別有幫助，不過如果只是小練習、短腳本或快速驗證想法，它通常不是最先一定要做的步驟。所以題目問『通常不是必須』時，答案就是「生成單元測試程式碼」這個步驟。", "has_caveat": 1, "caveat_note": "此題畫面以「實務上的建議流程」5步驟呈現（①理解問題描述和需求→②請AI生成初版程式碼→③人工修改和優化程式碼→④手動調試和測試程式碼→⑤視需要再補上單元測試），但影片結論文字為「答案就是第3項：生成單元測試程式碼」，與流程圖第3步「人工修改和優化程式碼」的文字不完全一致，較接近流程圖第5步「視需要再補上單元測試」。選項的確切逐字文字無法從畫面百分之百確認，以上選項C依解析結論「生成單元測試程式碼」與流程圖整合重建，建議使用者對照官方題庫核實選項C的正確文字（原意應指「單元測試」此一步驟非每次必要）。"}, {"id": 39, "source": "題庫03", "topic": "應用技能", "question": "使用AI生成程式碼可能會帶來哪些潛在威脅？", "option_a": "程式碼的開發效率可能提高", "option_b": "程式碼的可讀性可能增加", "option_c": "程式碼的安全性可能降低", "option_d": "程式碼的功能可能更完整", "correct_option": "C", "explanation": "使用AI生成程式碼時，可能引入漏洞、不安全的邏輯、過時的函式庫，或隱藏風險（例如未處理的例外、權限問題、資料外洩等）。因此，使用AI生成程式碼的「主要威脅」就是：程式碼的安全性可能降低。選項A、B、D描述的是可能的好處或中性結果，並非使用AI生成程式碼的主要威脅。", "has_caveat": 0, "caveat_note": null}, {"id": 40, "source": "題庫03", "topic": "應用技能", "question": "在使用AI生成程式碼時，以下哪個技術可以幫助模型理解程式語言的語法和結構？", "option_a": "深度學習", "option_b": "遷移學習", "option_c": "強化學習", "option_d": "模型微調", "correct_option": "A", "explanation": "深度學習讓模型透過大量程式碼資料學習，能辨識語法、結構、模式、變數用法、函式關係與常見程式邏輯，因此是幫助模型理解程式語言語法與結構的關鍵技術。遷移學習是把已學會的知識轉移到新任務；強化學習著重在依獎勵優化行為；模型微調則是針對特定任務進一步調整已預訓練模型。它們雖然有幫助，但讓模型「看懂」語法與結構的核心能力，主要來自深度學習的大量學習與表示能力。", "has_caveat": 0, "caveat_note": null}, {"id": 41, "source": "題庫03", "topic": "應用技能", "question": "生成程式碼時，以下哪個技術可以幫助模型理解程式語言的語法和結構？", "option_a": "深度學習", "option_b": "遷移學習", "option_c": "強化學習", "option_d": "模型微調", "correct_option": "A", "explanation": "同第40題——深度學習讓模型透過大量程式碼資料學習，能辨識語法、結構、模式、變數用法、函式關係與常見程式邏輯，是幫助模型理解程式語言語法與結構的關鍵技術。", "has_caveat": 1, "caveat_note": "本題（影片標示Q22）與第40題（影片標示Q21）題幹幾乎相同，僅文字略有差異（「使用AI生成程式碼時」vs「生成程式碼時」），選項與答案也完全相同，可能為影片系列中之重複/近似題。建議使用者核對官方題庫，確認是否為同一題重複出現，或確為兩道獨立題目。"}, {"id": 42, "source": "題庫03", "topic": "應用技能", "question": "在使用AI生成程式碼時，以下哪項通常不是一個重要的考慮因素？", "option_a": "輸入資料的品質", "option_b": "模型的準確度", "option_c": "生成程式碼的風格和可讀性", "option_d": "使用的硬體資源", "correct_option": "D", "explanation": "使用AI生成程式碼時，真正重要的是：你的提示詞（輸入）是否清楚且高品質、模型是否夠準確、以及生成的程式碼是否易讀、好維護。相反地，硬體資源（例如CPU、GPU、記憶體）通常是由平台或服務方負責配置與管理，使用者在評估AI生成程式碼品質時，通常不需要特別考慮。因此，選項D「使用的硬體資源」通常不是一個重要的考慮因素。", "has_caveat": 0, "caveat_note": null}, {"id": 43, "source": "題庫03", "topic": "應用技能", "question": "使用AI生成式數據分析的有什麼優勢？", "option_a": "能夠處理大規模數據，自動化程度高", "option_b": "可以生成新的數據，豐富數據集", "option_c": "預測能力強，能發現隱藏模式", "option_d": "以上皆是", "correct_option": "D", "explanation": "因為選項A、B、C都是AI生成式數據分析的優勢，所以最完整、最正確的答案是「以上皆是」。A能快速處理海量資料，並自動化分析流程，提升效率、節省時間與人力；B能生成新的數據或補齊缺失資料，讓數據更完整、多元，提升分析品質；C運用深度學習與模式辨識，挖掘人眼難以發現的趨勢，並挖掘更多洞察。", "has_caveat": 0, "caveat_note": null}, {"id": 44, "source": "題庫03", "topic": "應用技能", "question": "AI生成式技術如何幫助改善傳統數據分析的流程？", "option_a": "生成更多電力", "option_b": "提高資料收集速度", "option_c": "自動化資料清洗和處理", "option_d": "增加資料冗餘", "correct_option": "C", "explanation": "AI生成式技術能協助把原本很花時間的資料整理工作自動化，例如清理重複資料、補缺漏、格式統一、初步整理與處理，讓分析流程更有效率。生成更多電力與資料分析流程無關，AI生成式技術並不會「生成更多電力」；提高資料收集速度雖然AI可以間接幫助加快工作，但本題的核心重點不是「收集速度」，而是「資料清洗和處理」；增加資料冗餘會造成儲存浪費、分析混亂，並非優點，反而會降低分析效率與準確性。", "has_caveat": 0, "caveat_note": null}, {"id": 45, "source": "題庫03", "topic": "應用技能", "question": "哪一個不是使用生成式AI的應用？", "option_a": "趨勢預測", "option_b": "規則探勘", "option_c": "高速收集資料", "option_d": "快速生成視覺化圖表", "correct_option": "C", "explanation": "「高速收集資料」是「蒐集資料的速度或工具能力」，不是AI要「生成、分析或輔助內容」的核心應用，就算不用生成式AI，用程式或爬蟲也能做到收集資料。趨勢預測是生成式AI能分析大量資料、找出模式並預測未來趨勢，屬於「分析＋生成洞察」的應用；規則探勘是生成式AI能從資料中找出關聯與規則，並用自然語言說明給我們聽，是「發現＋解釋知識」的應用；快速生成視覺化圖表是生成式AI能根據資料自動產生圖表，或把重點整理成圖表與說明，屬於「協助內容產生與呈現」。生成式AI的重點是生成、分析與輔助，不是只加快資料收集的速度。", "has_caveat": 0, "caveat_note": null}, {"id": 46, "source": "題庫03", "topic": "應用技能", "question": "在聊天機器人的應用中，什麼是互動式對話系統？", "option_a": "多次互動來完成一個任務", "option_b": "使用圖片進行對話", "option_c": "一次性提供所有資訊", "option_d": "僅適用於簡單查詢或操作", "correct_option": "A", "explanation": "互動式對話系統是指使用者與聊天機器人透過多輪來回對話，逐步收集與確認資訊，最終完成一個任務。例如：詢問需求→確認細節→完成預約或申請服務。選項B僅是用圖片對話，並非互動流程；選項C是一次性提供所有資訊，沒有來回溝通；選項D限於簡單功能，不符合「多輪互動完成任務」的核心。", "has_caveat": 0, "caveat_note": null}, {"id": 47, "source": "題庫03", "topic": "應用技能", "question": "以下哪一個格式常用於聊天機器人的訊息傳遞與處理？", "option_a": "CSV", "option_b": "XML", "option_c": "JSON", "option_d": "HTML", "correct_option": "C", "explanation": "聊天機器人系統在傳送與接收資料時，常用JSON格式，因為JSON具有清楚的鍵值（key-value）結構，程式容易讀取與處理，在API和訊息交換中非常普遍。CSV主要用於表格式資料（如試算表），不適合處理巢狀或結構化的訊息內容；XML是較早期的資料格式，標籤多、較冗長，解析與撰寫較複雜，使用率已較低；HTML主要用於網頁內容的顯示與排版，不是資料交換的格式。", "has_caveat": 1, "caveat_note": "原始畫面選項D文字顯示為「HTM」，對照說明文字與圖示（均標示為HTML）判斷應為「HTML」之簡寫或筆誤，整理時已校正為HTML，供使用者參考核對。"}, {"id": 48, "source": "題庫04", "topic": "能力強化", "question": "損失函數（Loss Function）是用來衡量模型預測結果與正確答案之間差距的指標，Loss值越小代表什麼？", "option_a": "模型預測越準確、表現越好", "option_b": "模型表現越差", "option_c": "模型尚未訓練", "option_d": "發生過度擬合", "correct_option": "A", "explanation": "Loss（損失值）可想成模型的扣分表，用來衡量模型預測結果和正確答案之間差多少。Loss值越小代表模型預測越接近正確答案、錯誤越少，因此模型表現越好。選項B方向相反，Loss小不是模型變差；選項C錯誤，因為只要有預測與比較就會產生Loss值，不限於模型尚未訓練的階段；選項D錯誤，過度擬合要看訓練集與測試集表現的差距，不能只看單一Loss值判斷。", "has_caveat": 1, "caveat_note": "此影片全程未以字卡顯示完整的原始題目與四個選項文字，僅以口語與「為什麼答案是1／選項2、3、4錯在哪裡」的推理方式呈現，確切題幹與選項原文無法由影片畫面或旁白逐字還原。以上題目與選項係依內容重建，答案方向（Loss越小代表模型越準確）應無誤，但文字非逐字稿，建議使用者對照官方題庫核實原始題目與選項文字。"}, {"id": 49, "source": "題庫04", "topic": "能力強化", "question": "在生成式AI中，微調（Fine-tuning）是指什麼？", "option_a": "對模型進行微調以適應特定任務或資料集", "option_b": "使用預訓練模型進行推理", "option_c": "將生成器網路和鑑別器網路連接起來", "option_d": "在訓練期間動態調整學習率", "correct_option": "A", "explanation": "微調就是把原本已經訓練好的模型，再拿特定任務或特定資料做進一步調整，讓它更符合某個用途，例如客服問答、醫療文本或品牌文案。這不是單純拿模型來推理，也不是把生成器和鑑別器接起來，更不是只調整學習率，所以最符合微調定義的是選項A。", "has_caveat": 0, "caveat_note": null}, {"id": 50, "source": "題庫04", "topic": "能力強化", "question": "下列何者為BERT的核心組件模型？", "option_a": "Professor", "option_b": "Generator", "option_c": "Informer", "option_d": "Transformer", "correct_option": "D", "explanation": "BERT的核心架構是Transformer，特別利用Transformer的雙向理解能力，讓模型能同時參考一句話前後文，理解詞語在語境中的意思；Professor、Generator、Informer都不是BERT核心組件模型。", "has_caveat": 0, "caveat_note": null}, {"id": 51, "source": "題庫04", "topic": "能力強化", "question": "以下哪一種訓練方式使用未標記資料？", "option_a": "監督式學習", "option_b": "非監督式學習", "option_c": "半監督式學習", "option_d": "強化學習", "correct_option": "B", "explanation": "非監督式學習就是讓AI面對沒有標準答案的資料，自己去找規律、分群或關聯，所以最符合「使用未標記資料」的意思。監督式學習要有標記答案，半監督式學習是標記與未標記混合，強化學習則靠回饋獎勵，不是本題重點。", "has_caveat": 0, "caveat_note": null}, {"id": 52, "source": "題庫04", "topic": "能力強化", "question": "多模態模型（LMM）通常是基於哪些技術開發的？", "option_a": "深度學習與大型神經網路", "option_b": "遺傳演算法和模糊邏輯", "option_c": "SVM和決策樹", "option_d": "RNN和進化演算法", "correct_option": "A", "explanation": "LMM必須同時理解文字、圖片、聲音等多種資料，並把它們整合起來進行理解與生成，這需要強大的表徵學習與融合能力。現代LMM通常是基於深度學習與大型神經網路開發，因為它們能從海量資料中學到複雜的模式，並有效整合不同模態，達成高品質的理解與生成。遺傳演算法和模糊邏輯比較偏向特定優化或規則推理，不是現代LMM主流基礎；SVM和決策樹較適合傳統機器學習任務，面對大規模多模態資料能力有限；RNN曾用於序列資料，但不是現代LMM最核心的主流架構，進化演算法也不是主要基礎。", "has_caveat": 1, "caveat_note": "畫面右側僅完整列出選項B、C、D的文字（用於說明為何不選），選項A（正確答案）文字係依左側「1分鐘白話文」說明重建為「深度學習與大型神經網路」，未見原始字卡逐字呈現，建議核對官方題庫確認選項A逐字文字。"}, {"id": 53, "source": "題庫04", "topic": "能力強化", "question": "何項技術藉由生成式模型訓練大量資料集，以生成新的內容，例如圖片、影片或聲音？", "option_a": "生成式對抗網路", "option_b": "風格轉換", "option_c": "強化學習", "option_d": "自動編碼器", "correct_option": "A", "explanation": "生成式對抗網路（GAN）是經典的生成式技術，它從大量資料中學習，學會資料特徵，再產生新內容，例如生成全新圖片、影片相關畫面或音訊等。風格轉換著重改變風格；強化學習是透過獎勵學習決策；自動編碼器可學特徵，但不是最直接的生成方法。", "has_caveat": 0, "caveat_note": null}, {"id": 54, "source": "題庫04", "topic": "能力強化", "question": "AI工具可以協助哪方面的自主學習管理呢？", "option_a": "時間管理", "option_b": "知識管理", "option_c": "任務和專案管理", "option_d": "以上皆是", "correct_option": "D", "explanation": "時間管理例如安排讀書時程、提醒截止日、規劃複習節奏；知識管理例如整理筆記、摘要重點、分類學習資料；任務和專案管理例如拆解作業步驟、追蹤進度、安排合作分工。AI工具可以在時間管理、知識管理、任務和專案管理三方面都提供很大幫助，因此最完整的答案就是選項D「以上皆是」。", "has_caveat": 0, "caveat_note": null}, {"id": 55, "source": "題庫04", "topic": "能力強化", "question": "AI時間管理工具無法協助達成以下哪個功能呢？", "option_a": "自動安排和調整日程，以最佳化時間利用", "option_b": "分析工作效率並提供改進建議", "option_c": "提醒用戶即將到來的會議和截止日期", "option_d": "完全替代人類的決策過程，根據個人喜好自動完成所有任務", "correct_option": "D", "explanation": "AI時間管理工具可以幫你排程，自動安排和調整日程，讓時間用得更有效率；它也能提醒你會議和截止日期，避免錯過重要事項；還能分析你的工作效率，提供改進建議，幫助你做得更好。但AI是輔助工具，不可能完全取代人的判斷，也不會依個人喜好自動完成所有任務，因此第4項是做不到的功能。", "has_caveat": 0, "caveat_note": null}, {"id": 56, "source": "題庫04", "topic": "能力強化", "question": "在AI生成內容（GAI）領域，BERT是一種什麼類型的模型？", "option_a": "迴歸模型", "option_b": "圖片模型", "option_c": "語言模型", "option_d": "分類模型", "correct_option": "C", "explanation": "BERT（Bidirectional Encoder Representations from Transformers）是一種語言模型，主要用來理解和處理文字。它能從句子中同時考慮左右兩邊的語境，幫助電腦更好地理解字詞在不同脈絡下的意思，常用於問答、文字理解、搜尋、摘要等任務。迴歸模型主要用來預測連續數值（如房價、溫度），BERT的主要目標是理解文字，不是數值預測；圖片模型（如CNN）專門用來處理影像資料，BERT主要處理的是文字，不是影像；雖然BERT可以拿來做分類任務（例如情感分析），但模型的本質與核心能力是「理解語言」，因此它的類型仍屬於語言模型。", "has_caveat": 0, "caveat_note": null}, {"id": 57, "source": "題庫04", "topic": "能力強化", "question": "“Garbage in, garbage out.”這個說法在生成式AI的哪個方面尤為重要？", "option_a": "運算資源的使用", "option_b": "訓練時間的長短", "option_c": "模型參數的多少", "option_d": "訓練資料的品質", "correct_option": "D", "explanation": "“Garbage in, garbage out.”的意思是：如果輸入（這裡指訓練資料）是垃圾，輸出（AI生成的結果）也會是垃圾。運算資源、訓練時間、模型參數的多寡，確實會影響模型表現（例如更快、更大、可能更強），但它們不是這句話的核心含義。即使資源再多、時間再長、參數再多，如果資料品質差，AI的結果仍然會差，因此這個說法在「訓練資料的品質」上尤為重要。", "has_caveat": 0, "caveat_note": null}, {"id": 58, "source": "題庫04", "topic": "能力強化", "question": "GAI裡的Prompt是什麼？", "option_a": "用來評估人工智慧生成內容品質的標準", "option_b": "用於訓練人工智慧模型的大量數據集", "option_c": "用於提供給AI的文字提示", "option_d": "用來測試人工智慧模型性能的基準數據", "correct_option": "C", "explanation": "Prompt就是使用者給AI的文字指令或提示，告訴AI想做什麼，例如寫文案、摘要文章、生成圖片描述等。選項A是評估標準：指用來判斷AI生成內容好壞的規則或指標，所以不是Prompt；選項B是訓練數據：指用來訓練AI模型的大量資料，讓AI學習，所以不是Prompt；選項D是基準數據：指用來測試與比較模型表現的標準資料集，所以不是Prompt。", "has_caveat": 0, "caveat_note": null}, {"id": 59, "source": "題庫04", "topic": "能力強化", "question": "GAI裡的Prompt也可以稱之為何？", "option_a": "文字指令", "option_b": "詠唱", "option_c": "咒語", "option_d": "以上皆是", "correct_option": "D", "explanation": "在GAI（生成式AI）裡，Prompt指的就是你輸入給AI的文字，用來告訴AI要做什麼或如何回答。在實際教學或創作者社群中，大家常常會口語地稱呼它為「文字指令」、「詠唱」或「咒語」。因為選項A、B、C都是同一件事的不同說法，所以最完整、最正確的答案是選項D「以上皆是」。", "has_caveat": 0, "caveat_note": null}, {"id": 60, "source": "題庫04", "topic": "能力強化", "question": "Prompt的好壞主要影響有哪些？下列何者為誤？", "option_a": "精確性", "option_b": "生成檔案的大小", "option_c": "可控性", "option_d": "風格和語氣", "correct_option": "B", "explanation": "Prompt的品質會明顯影響AI產出的精確性、可控性，還有整體風格與語氣。也就是說，你的提示詞越清楚，AI越容易照你的要求產生正確、穩定、符合風格的內容。但「生成檔案的大小」通常不是由Prompt的好壞直接決定，而比較常和解析度、輸出格式、壓縮方式有關。所以這題問「何者為誤」，最不符合Prompt主要影響的就是第B項。", "has_caveat": 0, "caveat_note": null}, {"id": 61, "source": "題庫04", "topic": "能力強化", "question": "Prompt的好壞會直接影響生成結果的品質，下列哪個元素無法生成精確的成果？", "option_a": "清晰描述", "option_b": "簡易說明", "option_c": "具體定義", "option_d": "上下文連貫", "correct_option": "B", "explanation": "如果Prompt只有簡單或模糊的說明，AI可能無法完全理解你需要的細節，產生的結果就會不夠精確。清晰描述能讓AI知道重點；具體定義提供明確標準；上下文連貫讓AI掌握脈絡，都能幫助AI生成更準確的結果，所以本題答案是B「簡易說明」。", "has_caveat": 0, "caveat_note": null}, {"id": 62, "source": "題庫04", "topic": "能力強化", "question": "下列哪一項不是進階提示詞工程的特點？", "option_a": "需要精確語言與上下文資訊，才能減少誤解", "option_b": "會根據任務目標調整提示內容，讓輸出更符合需求", "option_c": "使用大量特殊技術術語讓AI更懂你的需求", "option_d": "給予明確的目標、背景、限制、格式、語氣與範例，讓輸出更貼近期待", "correct_option": "C", "explanation": "進階提示詞工程的核心是把任務說清楚，讓AI更懂你要什麼，需要精確語言與上下文資訊，才能減少誤解；會根據任務目標調整提示內容，讓輸出更符合需求。如果只是使用大量特殊技術術語，反而不一定讓AI更懂，可能讓輸出變得混亂，因此這是錯誤選項。生活例子：煮一鍋湯，你要說清楚食材、份量、步驟、時間，湯才會好喝；只說專業術語堆疊的指令，反而會讓人（或AI）一頭霧水。", "has_caveat": 1, "caveat_note": "畫面未以A-D編號列出四個完整選項文字，僅點列「進階提示詞工程的核心」六項特質（目標、背景、限制、格式、語氣、範例）並說明「第3項是錯誤選項」，指該錯誤選項與「使用大量特殊技術術語」有關，確切四個選項原文無法逐字還原，以上為依內容重建，建議使用者核對官方題庫確認原始選項文字。"}, {"id": 63, "source": "題庫04", "topic": "能力強化", "question": "下列何者不是Prompt使用提示語的情境設置策略和技巧？", "option_a": "使用艱澀冷門的專用術語", "option_b": "描述明確目標", "option_c": "給予特定角色", "option_d": "指定產出格式", "correct_option": "A", "explanation": "Prompt情境設置技巧重點是幫AI更清楚理解任務，例如先說明要達成的目標、指定它扮演什麼角色，或要求用特定格式輸出，這些做法都能讓結果更穩定、更接近需求。相反地，使用艱澀又冷門的專用術語，並不會自動讓Prompt變高級，反而可能讓指令變得難懂，增加誤解風險。所以第A項不是有效的情境設置策略。", "has_caveat": 1, "caveat_note": "畫面僅完整顯示選項B、C、D的文字（描述明確目標、給予特定角色、指定產出格式），選項A（正確答案，即錯誤策略）文字依解析說明「使用艱澀冷門的專用術語」重建，非逐字字卡文字，建議核對官方題庫。"}, {"id": 64, "source": "題庫04", "topic": "能力強化", "question": "為什麼需要追求Prompt的合理性？", "option_a": "增加生成的正確性", "option_b": "加快AI的運算速度", "option_c": "節省電力與成本", "option_d": "讓AI更有創意", "correct_option": "A", "explanation": "Prompt像給AI的任務說明書，說明越合理，AI越不容易誤解，輸出越接近需求。合理Prompt不是為了讓電腦變快或省電，而是讓內容更準，所以正確答案是增加生成的正確性。", "has_caveat": 0, "caveat_note": null}, {"id": 65, "source": "題庫04", "topic": "能力強化", "question": "在ChatGPT中如輸入資訊後所生成的答案，並非你所要的，後續又該如何處理才能提高ChatGPT答題的準確度？下列何者為非？", "option_a": "原句重新再問一次", "option_b": "描述明確目標", "option_c": "分析問題", "option_d": "拆解問題", "correct_option": "A", "explanation": "不滿意答案時的有效做法是：補充目標（描述明確目標，讓AI知道要完成什麼）、指出問題（分析問題的重點是什麼、缺少哪些資訊）、拆解步驟（分成小步驟，逐一釐清）。單純把原句重新再問一次，資訊沒有增加，答案可能一樣不準，所以何者為非的答案是選項A。", "has_caveat": 0, "caveat_note": null}, {"id": 66, "source": "題庫04", "topic": "能力強化", "question": "使用ChatGPT來撰寫計畫，需要哪些關鍵元素才能生成較精確的文件？", "option_a": "明確目標", "option_b": "特定角色", "option_c": "足夠上下文", "option_d": "以上皆是", "correct_option": "D", "explanation": "想要AI幫你寫出更精準的計畫，不能只問「幫我寫一份計畫」這種太籠統的問法。你需要說清楚：想要AI扮演什麼角色、讓它用專業角度回答，還要提供背景條件，這樣它才知道怎麼寫，結果才會好用——也就是明確目標、特定角色、足夠上下文三者兼具，結果會內容聚焦、結構完整、可直接使用。", "has_caveat": 1, "caveat_note": "畫面以「錯誤問法 vs 較好問法」對比呈現，未列出A-D編號選項文字，正確答案「4／D」對應之具體選項文字無法由畫面直接確認，以上依內容重建為「明確目標、特定角色、足夠上下文、以上皆是」，建議使用者核對官方題庫確認選項原文。"}, {"id": 67, "source": "題庫04", "topic": "能力強化", "question": "將問題分階段提問有什麼好處？", "option_a": "減少對硬體的依賴", "option_b": "得到更詳細、更精確的回覆", "option_c": "加快AI的運算速度", "option_d": "提高生成文本的創意性", "correct_option": "B", "explanation": "把大問題拆成多個小步驟來問，能讓AI先了解目標，再掌握條件，接著補充細節需求，最後產出符合期待的結果。這樣回答才會更完整、準確、符合期待。選項A「減少對硬體的依賴」：分階段提問的重點不在硬體需求；選項C「加快AI的運算速度」：速度不是由提問方式決定；選項D「提高生成文本的創意性」：創意不是主要目的，是附加效果。", "has_caveat": 1, "caveat_note": "畫面中選項B（正確答案）文字被講師人像部分遮擋，僅能辨識片段「分階段提...」、「是讓回...」，完整文字依題目脈絡（分階段提問：結果更詳細、更精確）重建為「得到更詳細、更精確的回覆」，選項A、C、D文字依畫面「為什麼1、3、4不是主要答案」欄位列出，建議核對官方題庫確認逐字文字。"}, {"id": 68, "source": "題庫04", "topic": "能力強化", "question": "為什麼資料治理對生成式AI模型至關重要？", "option_a": "減少數據存儲成本", "option_b": "提高數據品質和安全", "option_c": "增加數據多樣性", "option_d": "優化數據格式", "correct_option": "B", "explanation": "資料治理能確保資料在整個生命週期中被妥善管理，提升資料的品質、準確性、完整性，並保障隱私、權限與安全。這樣可讓生成式AI模型學習到更可靠的資料，產生更準確、一致的回應，並降低錯誤、偏見、資料外洩等風險，建立使用者信任與合規性。減少數據存儲成本雖然重要，但不是核心目標，重點是資料「好不好、安不安全」；增加數據多樣性有助於模型表現，但若資料品質差或有偏見，反而有害；優化數據格式可提升處理效率，但若資料不準確或不安全，仍會導致問題。", "has_caveat": 0, "caveat_note": null}, {"id": 69, "source": "題庫04", "topic": "能力強化", "question": "開源數據共享概念強調數據的哪些特性？", "option_a": "私密性和不可訪問性", "option_b": "可獲取性和可再使用性", "option_c": "商業性和高利潤性", "option_d": "獨佔性和排他性", "correct_option": "B", "explanation": "開源數據共享的重點，是讓更多人能夠容易取得（可獲取）並且再次使用（可再使用）這些數據。因此，數據應該要開放、可取得、可再利用，這樣可以幫助學習、研究、創新以及公共服務，讓社會整體更進步。選項A錯：強調私密與不可訪問，與「開放」的精神相反，開源數據不是要把數據藏起來；選項C錯：開源數據不是為了賺錢或追求高利潤，重點在於公共利益與共享價值；選項D錯：開源數據不是獨佔或排他，而是讓更多人一起使用與受益。", "has_caveat": 0, "caveat_note": null}, {"id": 70, "source": "題庫04", "topic": "能力強化", "question": "在生成式AI的開源數據共享中，哪些因素是高品質數據集收集的關鍵？", "option_a": "數據的格式多樣性", "option_b": "數據的來源可靠性", "option_c": "數據的訓練速度", "option_d": "數據的收集成本", "correct_option": "B", "explanation": "高品質數據集的關鍵，首先在於來源可靠。因為如果來源本身就錯誤、帶有偏見、過時或不清楚，AI就可能學到錯誤的資訊，進而產生不可靠的結果。可靠的來源能提升數據的準確性、一致性與可信度，讓AI學得更好、用得更安心。選項A數據的格式多樣性：雖然多樣的格式有助於應用，但並非決定數據品質的核心；選項C數據的訓練速度：訓練速度影響模型效率，但不是收集高品質數據集的關鍵；選項D數據的收集成本：成本涉及資源配置，但高或低成本並不能直接決定數據品質。", "has_caveat": 0, "caveat_note": null}, {"id": 71, "source": "題庫04", "topic": "能力強化", "question": "資料探勘的第一步是什麼？", "option_a": "資料清理", "option_b": "資料標註", "option_c": "資料收集", "option_d": "資料轉換", "correct_option": "C", "explanation": "資料探勘的第一步是「資料收集」。在清理、標註或轉換之前，我們一定要先把原始資料蒐集起來，例如：從資料庫、網站、感測器、問卷等來源取得資料。沒有資料，後面的步驟就無法開始。選項A資料清理：清理是把錯誤、重複或不完整的資料整理乾淨，但前提是要先有資料才能清理；選項B資料標註：標註是替資料加上標籤或說明，必須先有資料才能標註；選項D資料轉換：轉換是把資料變成另一種格式或結構，同樣需要先有資料才能轉換。", "has_caveat": 0, "caveat_note": null}, {"id": 72, "source": "題庫04", "topic": "能力強化", "question": "在資料清理過程中，下列哪一項不是主要目標？", "option_a": "去除重複的數據", "option_b": "填補或移除缺失的數據", "option_c": "增加資料集的大小", "option_d": "過濾無關或錯誤的訊息", "correct_option": "C", "explanation": "資料清理的重點是把資料整理乾淨、修正問題、提高品質，例如去除重複資料、處理缺失值、過濾錯誤或無關資訊。第3項「增加資料集的大小」不是資料清理的主要目標，這比較像資料蒐集、資料擴增或資料增補的工作，不是清理流程本身。", "has_caveat": 0, "caveat_note": null}, {"id": 73, "source": "題庫04", "topic": "能力強化", "question": "在生成式AI模型訓練中，資料標註的重要性體現在哪裡？", "option_a": "增加數據集的規模", "option_b": "確保數據的一致性", "option_c": "提高模型的泛化能力", "option_d": "為數據添加具體標籤，如情感或物體類別", "correct_option": "D", "explanation": "資料標註就是「為資料貼上明確標籤」，例如標記正向/負向情感、貓/狗類別，或是物體名稱，讓AI知道每筆資料代表什麼，才能學習正確。標註本身就是「加標籤」的行為，因此選項D是最直接、最正確的描述。選項A、B、C可能是標註帶來的效果或好處，但不是資料標註的核心定義。", "has_caveat": 0, "caveat_note": null}, {"id": 74, "source": "題庫04", "topic": "能力強化", "question": "為什麼資料清理對生成式AI模型很重要？", "option_a": "提高模型訓練速度", "option_b": "增加數據多樣性", "option_c": "減少數據存儲成本", "option_d": "確保數據集清潔、無噪音", "correct_option": "D", "explanation": "資料清理的核心，是把錯誤、重複、缺漏、雜訊或無關資料整理掉，讓資料集更乾淨、更可靠。生成式AI會從資料中學習，如果資料很亂、很多噪音，模型就可能學錯、答錯，產出不穩定的內容。所以資料清理最重要的目的，是確保數據集清潔、無噪音；選項A、B、C可能是附帶影響，但不是這題最核心的答案。", "has_caveat": 0, "caveat_note": null}, {"id": 75, "source": "題庫04", "topic": "能力強化", "question": "下列哪一項不屬於生成式AI資料治理的最佳實踐？", "option_a": "建立清晰的政策和程序", "option_b": "資料管理者和AI倫理委員會的角色", "option_c": "確保資料的複雜性和混亂度", "option_d": "透明度與可解釋性", "correct_option": "C", "explanation": "好的資料治理，就是讓資料有秩序、可理解、可追溯、可負責、值得信任。因此，清楚的政策、明確的角色與透明度都能幫助治理；而讓資料更複雜、混亂，只會增加混淆與風險，完全背離資料治理的目標。", "has_caveat": 0, "caveat_note": null}, {"id": 76, "source": "題庫04", "topic": "能力強化", "question": "資料預處理的主要目的之一是什麼？", "option_a": "增加數據量", "option_b": "減少模型複雜性", "option_c": "使資料適合於模型訓練", "option_d": "優化數據存儲", "correct_option": "C", "explanation": "資料預處理不是單純讓資料變多，也不是直接簡化模型，而是把資料整理成適合模型學習的樣子。像缺失值、重複資料、格式不同、尺度差異等，都要先處理，模型訓練才會比較穩定、準確。選項A增加數據量：這是資料擴增或收集，不是預處理核心目的；選項B減少模型複雜性：比較偏模型設計，不是資料預處理主要目的；選項D優化數據存儲：偏資料庫管理，不是模型訓練前處理的核心。", "has_caveat": 0, "caveat_note": null}, {"id": 77, "source": "題庫04", "topic": "能力強化", "question": "開源數據共享概念的目的為何？", "option_a": "促進生成式AI的發展", "option_b": "促進監督式AI的發展", "option_c": "促進強化學習AI的發展", "option_d": "促進非監督式AI的發展", "correct_option": "A", "explanation": "開源數據共享的目的是讓更多人能合法取得與再利用資料，讓AI研究者與開發者獲得更多訓練資源，加速實驗與創新，特別是支持生成式AI更廣泛地發展。選項B、C、D都是特定的學習方式（監督式、強化學習、非監督式），範圍較窄；而開源數據共享是更廣泛的概念，本題重點在於「促進生成式AI發展」。", "has_caveat": 0, "caveat_note": null}, {"id": 78, "source": "題庫05", "topic": "基礎知識", "question": "生成式AI的主要特點為何？", "option_a": "生成式AI無法生成新的內容，只能回答特定問題", "option_b": "生成式AI可以理解和生成自然語言，並能創造出新的內容", "option_c": "生成式AI在特定領域中工作，無法跨領域生成內容", "option_d": "生成式AI不能理解影像或視覺內容", "correct_option": "B", "explanation": "生成式AI的最大特色不只是回答問題，而是能先理解人類輸入的文字、圖片或需求，再依照指令創造出新的內容，例如文章、圖片、表格、腳本等，甚至可以跨主題協助發想。選項A說它不能生成新內容，這是錯的；選項C說它只能在特定領域中工作，無法跨領域生成內容，也不正確；選項D說它不能理解影像或視覺內容，也不符合現在的AI能力，現在很多生成式AI已經能處理圖片與視覺資訊。", "has_caveat": 1, "caveat_note": "畫面中選項C、D的開頭文字被講師人像部分遮擋（開頭字樣被遮住），完整文字依右側解析（選項C「只能在單一領域工作」、選項D「不能理解影像」）重建，核心語意應無誤，但非逐字字卡文字。"}, {"id": 79, "source": "題庫05", "topic": "基礎知識", "question": "何謂AI生成內容（GAI）？", "option_a": "一種利用人工智慧技術生成文字、圖片或音訊的過程", "option_b": "一種用於分析大數據的技術", "option_c": "一種用於機器學習的演算法", "option_d": "一種用於擴增實境（AR）的工具", "correct_option": "A", "explanation": "AI生成內容，重點在「生成」。也就是讓人工智慧依照你的指令，產生新的文字、圖片、音訊等內容。它不是單純分析資料，也不是某一個演算法，更不是AR工具，所以第A項最符合GAI的意思。", "has_caveat": 0, "caveat_note": null}, {"id": 80, "source": "題庫05", "topic": "基礎知識", "question": "目前AI生成內容（GAI）在內容創作中的一個重要趨勢是什麼？", "option_a": "自動化生成", "option_b": "手動編輯", "option_c": "印刷出版", "option_d": "手寫文字", "correct_option": "A", "explanation": "這題在問，目前GAI在內容創作最重要的發展方向是什麼。GAI的核心特色，就是能依照需求快速產出新的內容，例如文章、圖片、腳本、旁白等。這種讓AI幫忙先做出內容、提升速度與效率的方式，就叫做「自動化生成」，所以第1項最符合題意。", "has_caveat": 0, "caveat_note": null}, {"id": 81, "source": "題庫05", "topic": "基礎知識", "question": "下列哪段描述最符合生成式AI的發展趨勢？", "option_a": "生成式AI的內容生成能力將不斷提升", "option_b": "生成式AI的應用將限於特定領域", "option_c": "生成式AI模型將變得更加複雜和難以使用", "option_d": "生成式AI的道德和倫理問題將不受到重視", "correct_option": "A", "explanation": "目前的發展趨勢顯示，生成式AI越來越聰明、速度更快、準確度更高，能創作文字、圖片、音訊，甚至跨模態內容，內容生成能力會持續提升。選項B太過侷限，生成式AI正在拓展到教育、醫療、設計、行銷、娛樂等各領域；選項C與趨勢相反，AI工具正朝著更簡單、更直覺、更多人都能輕鬆使用的方向發展；選項D完全錯誤，全球對AI的倫理與安全議題關注度越來越高，相關規範也持續加強。", "has_caveat": 0, "caveat_note": null}, {"id": 82, "source": "題庫05", "topic": "基礎知識", "question": "生成式AI（Generative AI）與決策式AI（Discriminative AI）之間的主要區別為何？", "option_a": "生成式AI專注於對現有資料進行分類和辨識，而決策式AI專注於生成新的資料", "option_b": "生成式AI專注於生成新的資料，而決策式AI專注於對現有資料進行分類和辨識", "option_c": "生成式AI和決策式AI之間沒有區別", "option_d": "生成式AI和決策式AI都專注於優化問題解決的過程", "correct_option": "B", "explanation": "生成式AI就像一位創作者，能產生新的文字、圖片、聲音等各種內容；而決策式AI就像一位判別員，會看現有的資料，判斷它是什麼、屬於哪一類。因此，選項B才是正確答案。", "has_caveat": 0, "caveat_note": null}, {"id": 83, "source": "題庫05", "topic": "基礎知識", "question": "哪項技術被認為是改進AI生成內容（GAI）真實性和可信度的重要方法？", "option_a": "卷積神經網路", "option_b": "自迴歸模型", "option_c": "生成式對抗網路", "option_d": "強化學習", "correct_option": "C", "explanation": "當題目強調提升GAI內容的真實性和可信度，最常被提到的方法之一就是生成式對抗網路。它像兩個AI互相較勁：一個負責生成內容，另一個負責檢查真假，生成器會越做越逼真，所以第C項最符合題意。", "has_caveat": 0, "caveat_note": null}, {"id": 84, "source": "題庫05", "topic": "基礎知識", "question": "生成式AI可應用於哪些領域？", "option_a": "客服機器人", "option_b": "撰寫文案", "option_c": "設計圖像", "option_d": "以上皆是", "correct_option": "D", "explanation": "生成式AI的應用非常廣，不只可以拿來做客服機器人，還能協助撰寫文案、產生標題、貼文、腳本，也能生成圖片、海報、插畫等視覺內容。所以題目中的第1、2、3項其實都是生成式AI常見的應用範圍，因此最完整、最正確的答案就是第4項「以上皆是」。", "has_caveat": 0, "caveat_note": null}, {"id": 85, "source": "題庫05", "topic": "基礎知識", "question": "下列何者為我國首部專門規範人工智慧（AI）的法律？", "option_a": "個人資料保護法", "option_b": "數位發展基本法", "option_c": "人工智慧促進條例", "option_d": "人工智慧基本法", "correct_option": "D", "explanation": "這題在問「我國第一部專門規範AI的法律叫什麼名字」。正確答案是第4項「人工智慧基本法」，因為它是（影片所述）我國首部專門針對人工智慧發展、應用與治理所制定的基本法律；其他選項（個人資料保護法、數位發展基本法、人工智慧促進條例）皆非本題所指的首部AI專門規範法律。", "has_caveat": 1, "caveat_note": "此題涉及台灣立法現狀的時效性問題。影片內容主張「人工智慧基本法」為我國首部專門規範AI的法律，但此法在不同時間點可能仍處於草案／預告階段（由數位發展部等機關推動），是否已完成三讀並正式公布施行會隨時間變動，依資料截至範圍無法完全確認其最新狀態。強烈建議使用者於應試前查核數位發展部或立法院官方網站，確認此法律名稱、內容與施行狀態是否為最新事實，避免影片錄製當下的草案名稱與正式考試當下的官方答案不一致。"}, {"id": 86, "source": "題庫05", "topic": "基礎知識", "question": "下列何者「不屬於」台灣《人工智慧基本法》所揭示的人工智慧七大原則？", "option_a": "應遵循永續發展與福祉", "option_b": "隱私保護與資料治理", "option_c": "透明與可解釋", "option_d": "以市場效率與商業獲利為最高優先", "correct_option": "D", "explanation": "《人工智慧基本法》（依影片所述）訂下七大原則，目的是讓AI被負責任地發展與應用，保障大家的權益與公共價值。這七大原則包含：永續發展與福祉、人類自主、隱私保護與資料治理、資安與安全、透明與可解釋、公平與不歧視、問責。選項A、B、C都是七大原則中的實際內容；選項D「以市場效率與商業獲利為最高優先」並不是七大原則，因為法律並未把「獲利優先」放在最高順位，這部法律重視的是人本、安全、隱私、透明、公平，而不是「獲利第一、效率至上」。", "has_caveat": 1, "caveat_note": "同第85題，此題題幹預設台灣已有正式名為《人工智慧基本法》之法律並訂有「七大原則」，其法律現狀與七大原則內容的時效性需使用者自行查核最新官方資訊，建議應試前再次確認。"}, {"id": 87, "source": "題庫06", "topic": "基礎知識", "question": "關於AIGC，以下哪個描述最貼近實際應用？", "option_a": "自動產出影音等原創內容", "option_b": "分析網站訪客行為", "option_c": "儲存知識庫以供檢索", "option_d": "統一管理雲端帳號", "correct_option": "A", "explanation": "AIGC是指由AI自動生成內容的過程，應用包括文字、圖像、音訊等。", "has_caveat": 0, "caveat_note": null}, {"id": 88, "source": "題庫06", "topic": "基礎知識", "question": "下列哪個選項屬於AIGC常見應用場景？", "option_a": "繪製圖像作品", "option_b": "封鎖網路流量", "option_c": "管理用戶登入驗證", "option_d": "安裝驅動程式", "correct_option": "A", "explanation": "圖像生成（如Midjourney）是AIGC的代表性應用之一。", "has_caveat": 0, "caveat_note": null}, {"id": 89, "source": "題庫06", "topic": "基礎知識", "question": "企業導入生成式AI若使用開放式平台，應優先注意什麼？", "option_a": "網路頻寬充足性", "option_b": "平台介面顏色", "option_c": "隱私與資料保護機制", "option_d": "員工是否都懂英文", "correct_option": "C", "explanation": "使用開放模型時，需防止機密資訊外洩。", "has_caveat": 0, "caveat_note": null}, {"id": 90, "source": "題庫06", "topic": "基礎知識", "question": "AIGC在以下哪一種產業中應用最為明顯？", "option_a": "傳統製造業", "option_b": "網路內容創作", "option_c": "水資源管理", "option_d": "鋼鐵煉製業", "correct_option": "B", "explanation": "YouTube、部落格、社群行銷等領域廣泛使用AIGC提升內容產量。", "has_caveat": 0, "caveat_note": null}, {"id": 91, "source": "題庫06", "topic": "基礎知識", "question": "關於AIGC與PGC的比較，下列哪一項正確？", "option_a": "AIGC全程需人工編輯", "option_b": "PGC通常由非專業者產生", "option_c": "AIGC可快速大量產出內容", "option_d": "兩者皆僅限圖像生成", "correct_option": "C", "explanation": "AIGC可在短時間產生大量內容，是其相較PGC的顯著優勢。", "has_caveat": 0, "caveat_note": null}, {"id": 92, "source": "題庫06", "topic": "基礎知識", "question": "哪一項不是常見的AI優化器？", "option_a": "Adam", "option_b": "SGD", "option_c": "RMSprop", "option_d": "LDA", "correct_option": "D", "explanation": "LDA是主題模型，並非用於訓練神經網路的優化器。", "has_caveat": 0, "caveat_note": null}, {"id": 93, "source": "題庫06", "topic": "基礎知識", "question": "Zapier無法完成下列哪項任務？", "option_a": "傳送通知", "option_b": "儲存檔案", "option_c": "完整理解語意", "option_d": "同步表格", "correct_option": "C", "explanation": "Zapier無法真正理解語意，其為基於事件觸發的自動化平台。", "has_caveat": 0, "caveat_note": null}, {"id": 94, "source": "題庫06", "topic": "基礎知識", "question": "多模態模型常結合哪些核心技術？", "option_a": "SVM與決策樹", "option_b": "遺傳演算法與邏輯", "option_c": "深度學習與神經網路", "option_d": "匹配規則與字典", "correct_option": "C", "explanation": "多模態模型整合圖像、語音、文字等，需依賴深度學習與大型神經網路。", "has_caveat": 0, "caveat_note": null}, {"id": 95, "source": "題庫06", "topic": "基礎知識", "question": "以下哪個平台最適合學習AI工具實作與應用？", "option_a": "YouTube Shorts", "option_b": "Kaggle", "option_c": "Instagram Reels", "option_d": "LINE群組", "correct_option": "B", "explanation": "Kaggle提供大量AI資料集與實作競賽，是學習與實戰結合的好平台。", "has_caveat": 0, "caveat_note": null}, {"id": 96, "source": "題庫06", "topic": "基礎知識", "question": "生成式AI最常搭配哪種深度學習技術？", "option_a": "支援向量機", "option_b": "卷積神經網路", "option_c": "自注意力機制", "option_d": "模糊推理系統", "correct_option": "C", "explanation": "自注意力機制是Transformer架構核心，有助提升語言生成準確度。", "has_caveat": 0, "caveat_note": null}, {"id": 97, "source": "題庫06", "topic": "能力強化", "question": "下列哪個元素不會直接影響生成內容的品質？", "option_a": "語氣明確", "option_b": "上下文充足", "option_c": "執行時間", "option_d": "任務清楚", "correct_option": "C", "explanation": "執行時間與品質無直接關聯，重點在語義與目標設定。", "has_caveat": 0, "caveat_note": null}, {"id": 98, "source": "題庫06", "topic": "能力強化", "question": "下列何者不是良好提示設計的原則？", "option_a": "使用具體語言", "option_b": "提供目標明確", "option_c": "添加多層上下文", "option_d": "使用冗長不清語句", "correct_option": "D", "explanation": "模糊、冗長會造成AI理解困難，影響結果品質。", "has_caveat": 0, "caveat_note": null}, {"id": 99, "source": "題庫06", "topic": "能力強化", "question": "In-Context Learning的一大優勢為？", "option_a": "不需要訓練資料", "option_b": "能根據上下文即時調整回答", "option_c": "不需要語言模型", "option_d": "只適用圖像任務", "correct_option": "B", "explanation": "ICL強調依據前文提示調整行為，是生成式AI的重要學習方式。", "has_caveat": 0, "caveat_note": null}, {"id": 100, "source": "題庫06", "topic": "能力強化", "question": "使用提示詞工程的最大好處之一是什麼？", "option_a": "避免訓練資料標註", "option_b": "提高模型記憶容量", "option_c": "控制輸出品質與方向", "option_d": "改善硬體效率", "correct_option": "C", "explanation": "提示詞工程讓使用者能直接控制生成方向與風格。", "has_caveat": 0, "caveat_note": null}, {"id": 101, "source": "題庫06", "topic": "能力強化", "question": "在提示詞中加入明確任務範圍有何助益？", "option_a": "降低模型準確率", "option_b": "增加答案混亂", "option_c": "提高任務針對性與結果可控性", "option_d": "降低使用彈性", "correct_option": "C", "explanation": "明確範圍可讓AI聚焦核心任務，避免產出無關資訊。", "has_caveat": 0, "caveat_note": null}, {"id": 102, "source": "題庫06", "topic": "能力強化", "question": "資料處理流程中，第一步應是什麼？", "option_a": "清理資料", "option_b": "收集資料", "option_c": "標註資料", "option_d": "轉換格式", "correct_option": "B", "explanation": "資料處理需先收集資料，後續才有清理、分析等步驟。", "has_caveat": 0, "caveat_note": null}, {"id": 103, "source": "題庫06", "topic": "能力強化", "question": "為何資料清洗能提升AI模型表現？", "option_a": "減少訓練次數", "option_b": "去除錯誤與噪音", "option_c": "增加儲存空間", "option_d": "模糊標籤意圖", "correct_option": "B", "explanation": "乾淨資料能讓模型更有效率地學習與泛化。", "has_caveat": 0, "caveat_note": null}, {"id": 104, "source": "題庫06", "topic": "能力強化", "question": "哪一項行為可能削弱資料治理的效果？", "option_a": "設定資料處理流程", "option_b": "任意收集來源不明資料", "option_c": "建立標註規則", "option_d": "執行資料視覺化", "correct_option": "B", "explanation": "來源不明的資料可能導致偏誤與法律問題，降低治理成效。", "has_caveat": 0, "caveat_note": null}, {"id": 105, "source": "題庫06", "topic": "能力強化", "question": "資料視覺化的主要效益為何？", "option_a": "儲存空間最佳化", "option_b": "增加訓練速度", "option_c": "提升資料洞察力與理解度", "option_d": "降低模型的計算負擔", "correct_option": "C", "explanation": "視覺化有助人類理解資料分布與趨勢，是分析的重要工具。", "has_caveat": 0, "caveat_note": null}, {"id": 106, "source": "題庫06", "topic": "能力強化", "question": "下列哪一項最有助於確保AI訓練資料的公平性？", "option_a": "隨機收集社群內容", "option_b": "定期檢視資料偏差", "option_c": "忽略敏感屬性", "option_d": "避免標註資訊", "correct_option": "B", "explanation": "檢查資料偏差有助模型公平性與社會信任度。", "has_caveat": 0, "caveat_note": null}, {"id": 107, "source": "題庫06", "topic": "應用技能", "question": "下列哪一個工具最適合用來產生專業文字內容？", "option_a": "MidJourney", "option_b": "ChatGPT", "option_c": "Stable Diffusion", "option_d": "D-ID", "correct_option": "B", "explanation": "ChatGPT是專為自然語言處理設計的生成式AI，擅長生成商業與創作文案。", "has_caveat": 0, "caveat_note": null}, {"id": 108, "source": "題庫06", "topic": "應用技能", "question": "哪一種任務不屬於文字生成工具的常見應用？", "option_a": "自動摘要", "option_b": "小說創作", "option_c": "聲音合成", "option_d": "文章改寫", "correct_option": "C", "explanation": "聲音合成屬於語音處理範疇，非純文字生成應用。", "has_caveat": 0, "caveat_note": null}, {"id": 109, "source": "題庫06", "topic": "應用技能", "question": "生成式文字工具最常用於哪一類教學活動？", "option_a": "實驗模擬", "option_b": "數據分析", "option_c": "寫作輔助", "option_d": "影片剪輯", "correct_option": "C", "explanation": "AI文字工具可幫助學生構思文章、進行草稿修正等。", "has_caveat": 0, "caveat_note": null}, {"id": 110, "source": "題庫06", "topic": "應用技能", "question": "為避免ChatGPT答非所問，下列哪種方法最佳？", "option_a": "使用圖表", "option_b": "指定格式與任務", "option_c": "加入影片", "option_d": "上傳簡報", "correct_option": "B", "explanation": "清楚指定任務能減少模型產生偏離主題的回答。", "has_caveat": 0, "caveat_note": null}, {"id": 111, "source": "題庫06", "topic": "應用技能", "question": "若目的是生成新聞標題，下列哪一種提示語最有效？", "option_a": "請幫我下標題", "option_b": "幫我畫圖", "option_c": "請推薦一首歌", "option_d": "製作流程圖", "correct_option": "A", "explanation": "清楚指示產出標題能讓AI聚焦於簡潔有力的句型。", "has_caveat": 0, "caveat_note": null}, {"id": 112, "source": "題庫06", "topic": "應用技能", "question": "生成對抗網路的哪個特性有助於圖片真實感的提升？", "option_a": "使用卷積核", "option_b": "資料壓縮技術", "option_c": "對抗性訓練", "option_d": "超參數微調", "correct_option": "C", "explanation": "對抗性訓練如GAN，能提升圖片真實感。", "has_caveat": 0, "caveat_note": null}, {"id": 113, "source": "題庫06", "topic": "應用技能", "question": "若想讓圖片細節更清晰，應使用下列哪項方法？", "option_a": "降解析度", "option_b": "模糊處理", "option_c": "超解析重建", "option_d": "黑白轉彩色", "correct_option": "C", "explanation": "超解析技術能將模糊圖片重建為高解析版本。", "has_caveat": 0, "caveat_note": null}, {"id": 114, "source": "題庫06", "topic": "應用技能", "question": "下列何者是圖片生成模型的應用實例？", "option_a": "創作童書插圖", "option_b": "翻譯文獻資料", "option_c": "擷取語音片段", "option_d": "創建問卷調查", "correct_option": "A", "explanation": "童書插圖常使用AI生成圖片創造多樣風格。", "has_caveat": 0, "caveat_note": null}, {"id": 115, "source": "題庫06", "topic": "應用技能", "question": "哪個詞彙用於描述從雜訊中逐步生成圖像的技術？", "option_a": "壓縮模型", "option_b": "風格轉換", "option_c": "擴散模型", "option_d": "全連接層", "correct_option": "C", "explanation": "擴散模型是近年熱門的圖像生成技術之一。", "has_caveat": 0, "caveat_note": null}, {"id": 116, "source": "題庫06", "topic": "應用技能", "question": "哪一個平台最常用於生成電影風格圖片？", "option_a": "DALL·E", "option_b": "Notion", "option_c": "GPT-3", "option_d": "Perplexity", "correct_option": "A", "explanation": "DALL·E能根據提示產生特定風格的視覺內容。", "has_caveat": 1, "caveat_note": "此題選項除DALL·E外，其餘三者（Notion筆記軟體、GPT-3純文字模型、Perplexity搜尋問答引擎）皆非圖像生成工具，故以排除法可判斷答案為A；但若單純比較「電影風格」圖片生成的業界印象，MidJourney通常更常被提及，此處未列入選項，答案應以此題所給四個選項為準。"}, {"id": 117, "source": "題庫06", "topic": "應用技能", "question": "哪個工具常與GPT結合使用來創作歌曲？", "option_a": "Hugging Face", "option_b": "Figma", "option_c": "AIVA", "option_d": "Canva", "correct_option": "C", "explanation": "GPT可用來生成歌詞，再結合AIVA進行配樂與旋律創作。", "has_caveat": 0, "caveat_note": null}, {"id": 118, "source": "題庫06", "topic": "應用技能", "question": "若要讓AI生成的語音更自然，通常會用哪種技術？", "option_a": "語速調整", "option_b": "自然語音合成", "option_c": "降噪處理", "option_d": "音量控制", "correct_option": "B", "explanation": "自然語音合成（Natural Speech Synthesis）能讓生成語音更流暢、符合人類說話習慣。", "has_caveat": 0, "caveat_note": null}, {"id": 119, "source": "題庫06", "topic": "應用技能", "question": "若希望生成的語音更具情感，下列何者最重要？", "option_a": "音量均衡", "option_b": "語速一致", "option_c": "情緒標註資料", "option_d": "音高轉換", "correct_option": "C", "explanation": "情緒標註資料能讓模型學習不同情緒語調，生成更擬真語音。", "has_caveat": 0, "caveat_note": null}, {"id": 120, "source": "題庫06", "topic": "應用技能", "question": "當語音輸出需要包含方言或口音時，應如何處理？", "option_a": "忽略變異", "option_b": "使用中性語音", "option_c": "蒐集該語系語料", "option_d": "降低語音清晰度", "correct_option": "C", "explanation": "要涵蓋方言或口音，需蒐集並訓練特定語系語料庫。", "has_caveat": 0, "caveat_note": null}, {"id": 121, "source": "題庫06", "topic": "應用技能", "question": "AI配音應用中若需依場景調整語氣，下列技術最關鍵？", "option_a": "語音壓縮", "option_b": "語音風格轉換", "option_c": "音樂合成", "option_d": "資料視覺化", "correct_option": "B", "explanation": "語音風格轉換能讓生成語音因應不同情境調整語氣與節奏。", "has_caveat": 0, "caveat_note": null}, {"id": 122, "source": "題庫06", "topic": "應用技能", "question": "下列哪一個不是影片生成工具？", "option_a": "DALL·E", "option_b": "Runway", "option_c": "Sora", "option_d": "Pika", "correct_option": "A", "explanation": "DALL·E是圖像生成模型，不是用於生成影片。", "has_caveat": 0, "caveat_note": null}, {"id": 123, "source": "題庫06", "topic": "應用技能", "question": "在影片生成應用中，下列哪一項功能最有助於創作動畫短片？", "option_a": "語音轉文字", "option_b": "時間序列預測", "option_c": "文字轉影片", "option_d": "網路爬蟲", "correct_option": "C", "explanation": "文字轉影片技術讓創作者能夠根據文字敘述自動產出動畫影像，是生成式AI的核心應用之一。", "has_caveat": 0, "caveat_note": null}, {"id": 124, "source": "題庫06", "topic": "應用技能", "question": "Runway ML是一款能協助什麼類型使用者製作影片？", "option_a": "專業程式設計師", "option_b": "影片後製工程師", "option_c": "非專業創作者", "option_d": "硬體維修技師", "correct_option": "C", "explanation": "Runway ML提供簡單操作介面，讓非專業創作者也能使用AI製作影片。", "has_caveat": 0, "caveat_note": null}, {"id": 125, "source": "題庫06", "topic": "應用技能", "question": "在影片生成任務中，哪一種元素不屬於輸入參數之一？", "option_a": "場景描述", "option_b": "動作指令", "option_c": "鏡位設定", "option_d": "硬碟容量", "correct_option": "D", "explanation": "硬碟容量是硬體規格，不屬於模型生成時的輸入參數。", "has_caveat": 0, "caveat_note": null}, {"id": 126, "source": "題庫06", "topic": "應用技能", "question": "若使用者希望生成教育影片，下列哪一項最關鍵？", "option_a": "動畫風格選擇", "option_b": "教材內容準確", "option_c": "影片畫質高", "option_d": "背景音樂動感", "correct_option": "B", "explanation": "教育內容的正確性是教學影片最關鍵要素。", "has_caveat": 0, "caveat_note": null}, {"id": 127, "source": "題庫06", "topic": "應用技能", "question": "哪一種功能最能幫助AI自動生成吸引人的簡報封面？", "option_a": "圖表轉換", "option_b": "標題提案", "option_c": "資料上色", "option_d": "音效處理", "correct_option": "B", "explanation": "AI能根據主題自動提出簡報封面標題，提升整體吸引力。", "has_caveat": 0, "caveat_note": null}, {"id": 128, "source": "題庫06", "topic": "應用技能", "question": "簡報內容生成若需資料支援，AI最需結合哪一能力？", "option_a": "資料搜尋能力", "option_b": "圖片濾鏡技術", "option_c": "語音分離能力", "option_d": "動畫製作工具", "correct_option": "A", "explanation": "AI需檢索相關資料以提供準確的簡報內容。", "has_caveat": 0, "caveat_note": null}, {"id": 129, "source": "題庫06", "topic": "應用技能", "question": "下列哪一項有助於提升AI簡報的互動性？", "option_a": "加入問答模組", "option_b": "設定頁碼格式", "option_c": "調整圖片解析", "option_d": "簡化動畫次數", "correct_option": "A", "explanation": "問答模組可促進簡報中與觀眾的即時互動。", "has_caveat": 0, "caveat_note": null}, {"id": 130, "source": "題庫06", "topic": "應用技能", "question": "AI可自動生成簡報結尾段落的依據為？", "option_a": "前述重點", "option_b": "背景音樂", "option_c": "動畫片頭", "option_d": "畫面解析度", "correct_option": "A", "explanation": "AI會彙整前面段落重點，生成總結段落。", "has_caveat": 0, "caveat_note": null}, {"id": 131, "source": "題庫06", "topic": "應用技能", "question": "若需由AI協助建立圖片與內容一致的簡報，應結合什麼能力？", "option_a": "圖文對應判斷", "option_b": "語音識別分析", "option_c": "影像壓縮轉檔", "option_d": "格式轉譯邏輯", "correct_option": "A", "explanation": "AI需根據圖像內容搭配合適的文字描述以確保一致性。", "has_caveat": 0, "caveat_note": null}, {"id": 132, "source": "題庫06", "topic": "應用技能", "question": "在AI協助生成網站程式碼時，哪一項最容易造成資安風險？", "option_a": "缺乏語法檢查", "option_b": "註解過少", "option_c": "缺乏權限驗證", "option_d": "版面不美觀", "correct_option": "C", "explanation": "若未實作權限驗證，生成程式碼可能導致未授權存取漏洞。", "has_caveat": 0, "caveat_note": null}, {"id": 133, "source": "題庫06", "topic": "應用技能", "question": "在網頁開發中，哪個AI工具常被用來生成HTML與CSS結構？", "option_a": "Copilot", "option_b": "Bard", "option_c": "Notion", "option_d": "Claude", "correct_option": "A", "explanation": "GitHub Copilot能生成完整的HTML、CSS結構與互動功能碼。", "has_caveat": 0, "caveat_note": null}, {"id": 134, "source": "題庫06", "topic": "應用技能", "question": "哪種技術可強化AI理解程式上下文邏輯？", "option_a": "圖神經網路", "option_b": "語法分析器", "option_c": "語意轉換器", "option_d": "語音模型", "correct_option": "B", "explanation": "語法分析器能幫助模型理解代碼的結構與關聯邏輯。", "has_caveat": 0, "caveat_note": null}, {"id": 135, "source": "題庫06", "topic": "應用技能", "question": "以下哪種程式語言最常與AI生成應用整合？", "option_a": "Python", "option_b": "C#", "option_c": "Java", "option_d": "Perl", "correct_option": "A", "explanation": "Python擁有最豐富的AI套件與框架，整合度最高。", "has_caveat": 0, "caveat_note": null}, {"id": 136, "source": "題庫06", "topic": "應用技能", "question": "在開發網站應用時，AI工具主要提供什麼協助？", "option_a": "美工設計", "option_b": "測試模組", "option_c": "程式碼生成", "option_d": "資料庫備份", "correct_option": "C", "explanation": "AI工具最主要的貢獻是生成與輔助撰寫前後端程式碼。", "has_caveat": 0, "caveat_note": null}, {"id": 137, "source": "題庫06", "topic": "應用技能", "question": "哪一項技術最能支援AI分析大量結構化數據？", "option_a": "深度學習", "option_b": "電腦繪圖", "option_c": "虛擬實境", "option_d": "動畫建模", "correct_option": "A", "explanation": "深度學習模型特別擅長從大量結構化與非結構化數據中學習並做出預測。", "has_caveat": 0, "caveat_note": null}, {"id": 138, "source": "題庫06", "topic": "應用技能", "question": "生成式AI可以如何改善傳統資料分析？", "option_a": "提升網路速度", "option_b": "減少輸入錯誤", "option_c": "優化人力排班", "option_d": "提供預測與模式探索", "correct_option": "D", "explanation": "AI可從大量資料中發掘趨勢與潛在規律，超越傳統分析方式。", "has_caveat": 0, "caveat_note": null}, {"id": 139, "source": "題庫06", "topic": "應用技能", "question": "以下哪一項屬於數據分析中常見的AI應用？", "option_a": "自動化資料清洗", "option_b": "網頁爬蟲設計", "option_c": "硬碟分割", "option_d": "語音壓縮", "correct_option": "A", "explanation": "資料清洗是AI分析流程中的核心任務，生成式AI可提升其效率。", "has_caveat": 0, "caveat_note": null}, {"id": 140, "source": "題庫06", "topic": "應用技能", "question": "生成式AI提升資料分析效率的方式為何？", "option_a": "手動查詢資料", "option_b": "提高資料冗餘", "option_c": "快速生成圖表與預測", "option_d": "延後分析結果", "correct_option": "C", "explanation": "透過自動化流程，生成式AI可即時產出視覺化與預測結果。", "has_caveat": 0, "caveat_note": null}, {"id": 141, "source": "題庫06", "topic": "應用技能", "question": "下列何者是資料分析流程中的最後一個步驟？", "option_a": "數據清理", "option_b": "模型建構", "option_c": "視覺呈現與報告撰寫", "option_d": "資料擷取", "correct_option": "C", "explanation": "報告撰寫與視覺呈現通常是分析完成後的成果展示階段。", "has_caveat": 0, "caveat_note": null}, {"id": 142, "source": "題庫06", "topic": "倫理與法律", "question": "AI的問責制需求中，哪項行為最能落實該原則？", "option_a": "設置AI風險評估程序", "option_b": "減少模型參數量", "option_c": "隱藏使用模型的來源", "option_d": "避免提供模型更新記錄", "correct_option": "A", "explanation": "問責制強調可追蹤與評估行為，設置風險評估制度能有效落實。", "has_caveat": 0, "caveat_note": null}, {"id": 143, "source": "題庫06", "topic": "倫理與法律", "question": "哪一項屬於生成式AI在治理面可能引發的風險？", "option_a": "語言轉換速度太快", "option_b": "訓練資料未經授權", "option_c": "模型太簡單", "option_d": "開源模型太少", "correct_option": "B", "explanation": "未經授權使用資料將觸及智慧財產權與隱私問題，是主要風險之一。", "has_caveat": 0, "caveat_note": null}, {"id": 144, "source": "題庫06", "topic": "倫理與法律", "question": "當AI模型偏誤導致特定族群受害時，此問題屬於哪一面向？", "option_a": "問責性", "option_b": "公平性", "option_c": "隱私性", "option_d": "合法性", "correct_option": "B", "explanation": "偏誤對族群造成差別待遇屬於倫理中的公平性議題。", "has_caveat": 0, "caveat_note": null}, {"id": 145, "source": "題庫06", "topic": "倫理與法律", "question": "哪一項舉措能提升AI的可解釋性？", "option_a": "提供模型輸出依據", "option_b": "隱藏訓練方式", "option_c": "排除使用者回饋", "option_d": "避免開源模型", "correct_option": "A", "explanation": "可解釋性強調讓使用者理解模型如何得出結論。", "has_caveat": 0, "caveat_note": null}, {"id": 146, "source": "題庫06", "topic": "倫理與法律", "question": "AI產出內容的法律歸屬爭議主要涉及？", "option_a": "財產稅問題", "option_b": "圖像處理技術", "option_c": "智慧財產權", "option_d": "生態永續", "correct_option": "C", "explanation": "AI產出內容涉及著作權歸屬，是IP法的重要爭議之一。", "has_caveat": 0, "caveat_note": null}];
+
+const sourceGridEl = document.getElementById('sourceGrid');
+const totalAllEl = document.getElementById('totalAll');
+const poolCountEl = document.getElementById('poolCount');
+const randomizeOptionsEl = document.getElementById('randomizeOptions');
+const excludeCaveatEl = document.getElementById('excludeCaveat');
+const limitEnabledEl = document.getElementById('limitEnabled');
+const limitCountEl = document.getElementById('limitCount');
+const effectiveCountEl = document.getElementById('effectiveCount');
+const startBtn = document.getElementById('startBtn');
+
+const setupScreen = document.getElementById('setupScreen');
+const quizScreen = document.getElementById('quizScreen');
+const summaryScreen = document.getElementById('summaryScreen');
+
+const progressText = document.getElementById('progressText');
+const progressBar = document.getElementById('progressBar');
+const correctCountEl = document.getElementById('correctCount');
+const accuracyEl = document.getElementById('accuracy');
+const currentSourceEl = document.getElementById('currentSource');
+const currentTopicEl = document.getElementById('currentTopic');
+const currentIdEl = document.getElementById('currentId');
+const questionTextEl = document.getElementById('questionText');
+const optionsBoxEl = document.getElementById('optionsBox');
+const resultBoxEl = document.getElementById('resultBox');
+const resultBannerEl = document.getElementById('resultBanner');
+const explanationTextEl = document.getElementById('explanationText');
+const caveatTextEl = document.getElementById('caveatText');
+const nextBtn = document.getElementById('nextBtn');
+const backToSetupBtn = document.getElementById('backToSetupBtn');
+
+const summaryAccuracyEl = document.getElementById('summaryAccuracy');
+const summaryTotalEl = document.getElementById('summaryTotal');
+const summaryCorrectEl = document.getElementById('summaryCorrect');
+const summaryWrongEl = document.getElementById('summaryWrong');
+const restartSameBtn = document.getElementById('restartSameBtn');
+const backSetupFromSummaryBtn = document.getElementById('backSetupFromSummaryBtn');
+const reviewListEl = document.getElementById('reviewList');
+
+let queue = [];
+let qIndex = 0;
+let answered = 0;
+let correctCount = 0;
+let currentQ = null;
+let currentShuffledOptions = null; // [{letter, text, isCorrect}]
+let wrongList = [];
+const DISPLAY_LETTERS = ['A', 'B', 'C', 'D']; // [{source, topic, id, question, yourAnswer, correctLetter, correctText, explanation, has_caveat, caveat_note}]
+
+function shuffleArray(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildSourceCheckboxes() {
+  const sources = [...new Set(QUESTIONS.map(q => q.source))].sort();
+  sourceGridEl.innerHTML = sources.map(s => {
+    const count = QUESTIONS.filter(q => q.source === s).length;
+    const topics = [...new Set(QUESTIONS.filter(q => q.source === s).map(q => q.topic))].join('、');
+    return `<label class="chk">
+      <input type="checkbox" class="srcChk" value="${s}" checked>
+      ${s}（${count}題・${topics}）
+    </label>`;
+  }).join('');
+  sourceGridEl.querySelectorAll('.srcChk').forEach(cb => cb.addEventListener('change', updatePoolCount));
+}
+
+function getSelectedSources() {
+  return [...sourceGridEl.querySelectorAll('.srcChk:checked')].map(cb => cb.value);
+}
+
+function currentFilteredSet() {
+  const selected = getSelectedSources();
+  const excludeCaveat = excludeCaveatEl.checked;
+  return QUESTIONS.filter(q => {
+    if (!selected.includes(q.source)) return false;
+    if (excludeCaveat && q.has_caveat) return false;
+    return true;
+  });
+}
+
+function getEffectiveCount(poolSize) {
+  if (!limitEnabledEl.checked) return poolSize;
+  const n = parseInt(limitCountEl.value, 10);
+  if (!n || n < 1) return poolSize;
+  return Math.min(n, poolSize);
+}
+
+function updatePoolCount() {
+  const size = currentFilteredSet().length;
+  poolCountEl.textContent = size;
+  limitCountEl.max = size || 1;
+  effectiveCountEl.textContent = getEffectiveCount(size);
+}
+
+function startQuiz() {
+  const pool = currentFilteredSet();
+  if (pool.length === 0) {
+    alert('目前設定下沒有題目，請至少選一個來源。');
+    return;
+  }
+  const effectiveCount = getEffectiveCount(pool.length);
+  queue = shuffleArray(pool).slice(0, effectiveCount);
+  qIndex = 0;
+  answered = 0;
+  correctCount = 0;
+  wrongList = [];
+  setupScreen.classList.add('hidden');
+  summaryScreen.classList.add('hidden');
+  quizScreen.classList.remove('hidden');
+  showQuestion();
+}
+
+function updateProgressUI() {
+  progressText.textContent = (qIndex) + ' / ' + queue.length;
+  progressBar.style.width = (queue.length ? (qIndex / queue.length * 100) : 0) + '%';
+  correctCountEl.textContent = correctCount;
+  accuracyEl.textContent = answered ? Math.round(correctCount / answered * 100) + '%' : '0%';
+}
+
+function showQuestion() {
+  if (qIndex >= queue.length) {
+    showSummary();
+    return;
+  }
+  resultBoxEl.classList.add('hidden');
+  nextBtn.disabled = true;
+  currentQ = queue[qIndex];
+  updateProgressUI();
+
+  currentSourceEl.textContent = currentQ.source;
+  currentTopicEl.textContent = currentQ.topic;
+  currentIdEl.textContent = '第 ' + currentQ.id + ' 題';
+  questionTextEl.textContent = currentQ.question;
+
+  const rawOptions = [
+    { letter: 'A', text: currentQ.option_a, isCorrect: currentQ.correct_option === 'A' },
+    { letter: 'B', text: currentQ.option_b, isCorrect: currentQ.correct_option === 'B' },
+    { letter: 'C', text: currentQ.option_c, isCorrect: currentQ.correct_option === 'C' },
+    { letter: 'D', text: currentQ.option_d, isCorrect: currentQ.correct_option === 'D' },
+  ];
+  currentShuffledOptions = randomizeOptionsEl.checked ? shuffleArray(rawOptions) : rawOptions;
+
+  optionsBoxEl.innerHTML = '';
+  currentShuffledOptions.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.innerHTML = `<span class="letter">${DISPLAY_LETTERS[i]}</span><span>${opt.text}</span>`;
+    btn.addEventListener('click', () => selectAnswer(i, btn));
+    optionsBoxEl.appendChild(btn);
+  });
+}
+
+function selectAnswer(pickedIndex, btnEl) {
+  const allBtns = optionsBoxEl.querySelectorAll('.option');
+  allBtns.forEach(b => b.disabled = true);
+
+  const picked = currentShuffledOptions[pickedIndex];
+  const isCorrect = picked.isCorrect;
+  const correctIndex = currentShuffledOptions.findIndex(o => o.isCorrect);
+  const correctDisplayLetter = DISPLAY_LETTERS[correctIndex];
+  answered++;
+  if (isCorrect) {
+    correctCount++;
+  } else {
+    const correctOpt = currentShuffledOptions[correctIndex];
+    wrongList.push({
+      source: currentQ.source,
+      topic: currentQ.topic,
+      id: currentQ.id,
+      question: currentQ.question,
+      yourAnswer: picked.text,
+      correctLetter: correctDisplayLetter,
+      correctText: correctOpt.text,
+      explanation: currentQ.explanation,
+      has_caveat: currentQ.has_caveat,
+      caveat_note: currentQ.caveat_note,
+    });
+  }
+
+  allBtns.forEach((b, i) => {
+    if (currentShuffledOptions[i].isCorrect) b.classList.add('correct');
+    else if (i === pickedIndex) b.classList.add('wrong');
+  });
+
+  resultBannerEl.textContent = isCorrect ? '✓ 答對了！' : ('✗ 答錯了，正確答案是 ' + correctDisplayLetter);
+  resultBannerEl.className = 'result-banner ' + (isCorrect ? 'correct' : 'wrong');
+  explanationTextEl.textContent = '解析：' + currentQ.explanation;
+
+  if (currentQ.has_caveat && currentQ.caveat_note) {
+    caveatTextEl.classList.remove('hidden');
+    caveatTextEl.textContent = '⚠️ 爭議備註：' + currentQ.caveat_note;
+  } else {
+    caveatTextEl.classList.add('hidden');
+  }
+
+  resultBoxEl.classList.remove('hidden');
+  nextBtn.disabled = false;
+  qIndex++;
+  updateProgressUI();
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderReviewList() {
+  if (wrongList.length === 0) {
+    reviewListEl.innerHTML = '<div class="no-wrong">太厲害了，這次沒有答錯的題目！</div>';
+    return;
+  }
+  reviewListEl.innerHTML = wrongList.map(w => `
+    <div class="review-item">
+      <div class="meta">
+        <span class="tag">${escapeHtml(w.source)}</span>
+        <span class="tag">${escapeHtml(w.topic)}</span>
+        <span>第 ${w.id} 題</span>
+      </div>
+      <div class="question">${escapeHtml(w.question)}</div>
+      <div class="review-line">你的答案：<span class="your-ans">${escapeHtml(w.yourAnswer)}</span></div>
+      <div class="review-line">正確答案：<span class="correct-ans">${w.correctLetter}. ${escapeHtml(w.correctText)}</span></div>
+      <div class="review-explanation">解析：${escapeHtml(w.explanation)}</div>
+      ${w.has_caveat && w.caveat_note ? `<div class="caveat" style="margin-top:8px;">⚠️ 爭議備註：${escapeHtml(w.caveat_note)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function showSummary() {
+  quizScreen.classList.add('hidden');
+  summaryScreen.classList.remove('hidden');
+  summaryTotalEl.textContent = answered;
+  summaryCorrectEl.textContent = correctCount;
+  summaryWrongEl.textContent = answered - correctCount;
+  summaryAccuracyEl.textContent = answered ? Math.round(correctCount / answered * 100) + '%' : '0%';
+  renderReviewList();
+}
+
+nextBtn.addEventListener('click', showQuestion);
+startBtn.addEventListener('click', startQuiz);
+backToSetupBtn.addEventListener('click', showSummary);
+restartSameBtn.addEventListener('click', startQuiz);
+backSetupFromSummaryBtn.addEventListener('click', () => {
+  summaryScreen.classList.add('hidden');
+  setupScreen.classList.remove('hidden');
+  updatePoolCount();
+});
+excludeCaveatEl.addEventListener('change', updatePoolCount);
+limitEnabledEl.addEventListener('change', () => {
+  limitCountEl.disabled = !limitEnabledEl.checked;
+  updatePoolCount();
+});
+limitCountEl.addEventListener('input', updatePoolCount);
+
+totalAllEl.textContent = QUESTIONS.length;
+buildSourceCheckboxes();
+updatePoolCount();
+</script>
+</body>
+</html>
