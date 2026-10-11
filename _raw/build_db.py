@@ -14,6 +14,7 @@ SOURCE_MAP = [
     ("題庫04.md", "題庫04", "能力強化"),
     ("題庫05.md", "題庫05", "基礎知識"),
     ("題庫06.md", "題庫06", None),  # topic derived per-question from 單元 headers
+    ("題庫07.md", "題庫07", "綜合"),
 ]
 
 Q_HEADER = re.compile(r"^##\s*第(\d+)題\s*$", re.MULTILINE)
@@ -78,6 +79,10 @@ def parse_file(path, source, default_topic):
         explanation = em.group(1).strip() if em else None
 
         topic = default_topic if default_topic is not None else unit_topic_map.get(qid, "其他")
+
+        if re.search(r"^>\s*🚫\s*重複排除", block, re.MULTILINE):
+            print(f"  skip (duplicate, excluded from DB): #{qid}")
+            continue
 
         records.append({
             "id": qid,
