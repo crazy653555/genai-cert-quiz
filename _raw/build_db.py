@@ -16,6 +16,7 @@ SOURCE_MAP = [
     ("題庫06.md", "題庫06", None),  # topic derived per-question from 單元 headers
     ("題庫07.md", "題庫07", "綜合"),
     ("題庫08.md", "題庫08", "綜合"),
+    ("題庫09.md", "題庫09", "白話拆解 × 認證實戰：鑑別式與生成式 AI"),
 ]
 
 Q_HEADER = re.compile(r"^##\s*第(\d+)題\s*$", re.MULTILINE)
