@@ -68,9 +68,9 @@ template = """<!doctype html>
     .wrap { max-width: 760px; padding-top: 32px; }
   }
   header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-  h1 { font-size: 20px; margin: 0; }
-  h2 { font-size: 16px; margin: 0 0 4px; }
-  .sub { color: var(--muted); font-size: 13px; }
+  h1 { font-size: 1.25rem; margin: 0; }
+  h2 { font-size: 1rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 0.8125rem; }
 
   .card {
     background: var(--card-bg); border: 1px solid var(--border);
@@ -79,47 +79,47 @@ template = """<!doctype html>
   .card + .card { margin-top: 16px; }
 
   fieldset { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin: 0 0 16px; }
-  legend { font-size: 13px; color: var(--muted); padding: 0 6px; }
+  legend { font-size: 0.8125rem; color: var(--muted); padding: 0 6px; }
   .src-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
   label.chk {
-    display: flex; align-items: center; gap: 8px; font-size: 14px;
+    display: flex; align-items: center; gap: 8px; font-size: 0.875rem;
     padding: 8px; border-radius: 8px; cursor: pointer; min-height: 40px;
   }
   label.chk:hover { background: var(--accent-weak); }
-  .toggle-row { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 10px; min-height: 32px; }
+  .toggle-row { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; margin-bottom: 10px; min-height: 32px; }
   input[type="checkbox"] { width: 18px; height: 18px; flex: none; }
   input[type="number"] { min-height: 36px; }
 
   button {
-    font-size: 14px; border-radius: 8px; border: 1px solid var(--border);
+    font-size: 0.875rem; border-radius: 8px; border: 1px solid var(--border);
     background: var(--card-bg); color: var(--text); padding: 10px 16px; cursor: pointer;
     min-height: 44px; touch-action: manipulation;
   }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; width: 100%; padding: 12px; font-size: 15px; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; width: 100%; padding: 12px; font-size: 0.9375rem; }
   button.secondary { width: 100%; margin-top: 10px; }
   button:disabled { opacity: .5; cursor: default; }
 
-  .progress-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--muted); margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .progress-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.8125rem; color: var(--muted); margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
   .progress-row b { color: var(--text); }
   .bar-track { height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; margin-bottom: 16px; }
   .bar-fill { height: 100%; background: var(--accent); transition: width .2s; }
 
-  .meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 10px; gap: 8px; flex-wrap: wrap; }
-  .tag { display: inline-block; background: var(--accent-weak); color: var(--accent); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
-  .question { font-size: 17px; font-weight: 600; margin: 0 0 16px; white-space: pre-wrap; }
+  .meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--muted); margin-bottom: 10px; gap: 8px; flex-wrap: wrap; }
+  .tag { display: inline-block; background: var(--accent-weak); color: var(--accent); border-radius: 999px; padding: 2px 10px; font-size: 0.75rem; }
+  .question { font-size: 1.0625rem; font-weight: 600; margin: 0 0 16px; white-space: pre-wrap; }
   .options { display: flex; flex-direction: column; gap: 10px; }
   .option {
     display: flex; gap: 10px; align-items: flex-start; text-align: left;
     padding: 14px; border: 1px solid var(--border); border-radius: 10px;
-    background: var(--bg); color: var(--text); font-size: 15px; cursor: pointer;
+    background: var(--bg); color: var(--text); font-size: 0.9375rem; cursor: pointer;
     transition: border-color .15s, background .15s; width: 100%;
     min-height: 48px; touch-action: manipulation;
   }
   .option:hover:not(:disabled) { border-color: var(--accent); }
   .option .letter {
-    flex: none; width: 24px; height: 24px; border-radius: 50%;
+    flex: none; width: 1.6em; height: 1.6em; border-radius: 50%;
     border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 700; color: var(--muted);
+    font-size: 0.8125rem; font-weight: 700; color: var(--muted);
   }
   .option.correct { border-color: var(--correct); background: var(--correct-weak); }
   .option.correct .letter { border-color: var(--correct); color: var(--correct); }
@@ -128,42 +128,46 @@ template = """<!doctype html>
   .option:disabled { cursor: default; }
 
   .result-box { margin-top: 16px; }
-  .result-banner { font-weight: 700; font-size: 15px; margin-bottom: 8px; }
+  .result-banner { font-weight: 700; font-size: 0.9375rem; margin-bottom: 8px; }
   .result-banner.correct { color: var(--correct); }
   .result-banner.wrong { color: var(--wrong); }
   .explanation {
-    font-size: 14px; color: var(--text); background: var(--bg);
+    font-size: 0.875rem; color: var(--text); background: var(--bg);
     border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; white-space: pre-wrap;
   }
   .caveat {
-    margin-top: 10px; font-size: 13px; color: var(--warn); background: var(--warn-weak);
+    margin-top: 10px; font-size: 0.8125rem; color: var(--warn); background: var(--warn-weak);
     border: 1px solid var(--warn); border-radius: 10px; padding: 10px 14px; white-space: pre-wrap;
   }
   .next-row { margin-top: 18px; }
 
-  .summary-stat { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 15px; }
+  .summary-stat { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.9375rem; }
   .summary-stat:last-child { border-bottom: none; }
-  .big-accuracy { font-size: 40px; font-weight: 800; color: var(--accent); text-align: center; margin: 6px 0 2px; }
+  .big-accuracy { font-size: 2.5rem; font-weight: 800; color: var(--accent); text-align: center; margin: 6px 0 2px; }
 
   .review-item {
     border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 12px;
   }
   .review-item .meta { margin-bottom: 8px; }
-  .review-item .question { font-size: 15px; margin-bottom: 10px; }
-  .review-line { font-size: 14px; margin: 4px 0; }
+  .review-item .question { font-size: 0.9375rem; margin-bottom: 10px; }
+  .review-line { font-size: 0.875rem; margin: 4px 0; }
   .review-line .your-ans { color: var(--wrong); font-weight: 600; }
   .review-line .correct-ans { color: var(--correct); font-weight: 600; }
-  .review-explanation { font-size: 13px; color: var(--muted); margin-top: 8px; white-space: pre-wrap; }
+  .review-explanation { font-size: 0.8125rem; color: var(--muted); margin-top: 8px; white-space: pre-wrap; }
   .no-wrong { text-align: center; color: var(--muted); padding: 20px 0; }
 
-  footer { margin-top: 24px; font-size: 12px; color: var(--muted); text-align: center; }
+  .font-ctrl { display: flex; align-items: center; gap: 4px; }
+  .font-ctrl button { min-height: 36px; min-width: 40px; padding: 4px 10px; font-weight: 700; }
+  .font-ctrl .font-val { font-size: 0.8125rem; color: var(--muted); min-width: 3em; text-align: center; }
+
+  footer { margin-top: 24px; font-size: 0.75rem; color: var(--muted); text-align: center; }
   .hidden { display: none !important; }
 
   @media (max-width: 400px) {
     .card { padding: 16px; }
-    .question { font-size: 16px; }
-    h1 { font-size: 18px; }
-    .big-accuracy { font-size: 34px; }
+    .question { font-size: 1rem; }
+    h1 { font-size: 1.125rem; }
+    .big-accuracy { font-size: 2.125rem; }
   }
 </style>
 </head>
@@ -173,6 +177,11 @@ template = """<!doctype html>
     <div>
       <h1>生成式AI能力認證 複習測驗</h1>
       <div class="sub">題庫共 <span id="totalAll">0</span> 題</div>
+    </div>
+    <div class="font-ctrl" role="group" aria-label="字體大小">
+      <button type="button" id="fontDownBtn" aria-label="縮小字體">A−</button>
+      <span class="font-val" id="fontVal">100%</span>
+      <button type="button" id="fontUpBtn" aria-label="放大字體">A＋</button>
     </div>
   </header>
 
@@ -387,6 +396,7 @@ function showQuestion() {
     showSummary();
     return;
   }
+  window.scrollTo(0, 0);
   resultBoxEl.classList.add('hidden');
   nextBtn.disabled = true;
   currentQ = queue[qIndex];
@@ -516,6 +526,29 @@ limitEnabledEl.addEventListener('change', () => {
   updatePoolCount();
 });
 limitCountEl.addEventListener('input', updatePoolCount);
+
+// 字體大小調整：以 rem 為基準縮放整頁文字，設定記在瀏覽器本機
+const FONT_STEPS = [85, 100, 115, 130, 150, 175];
+const FONT_KEY = 'quizFontScale';
+const fontValEl = document.getElementById('fontVal');
+const fontDownBtn = document.getElementById('fontDownBtn');
+const fontUpBtn = document.getElementById('fontUpBtn');
+let fontStep = 1;
+try {
+  const saved = FONT_STEPS.indexOf(parseInt(localStorage.getItem(FONT_KEY), 10));
+  if (saved >= 0) fontStep = saved;
+} catch (e) {}
+function applyFont() {
+  const pct = FONT_STEPS[fontStep];
+  document.documentElement.style.fontSize = (16 * pct / 100) + 'px';
+  fontValEl.textContent = pct + '%';
+  fontDownBtn.disabled = fontStep === 0;
+  fontUpBtn.disabled = fontStep === FONT_STEPS.length - 1;
+  try { localStorage.setItem(FONT_KEY, pct); } catch (e) {}
+}
+fontDownBtn.addEventListener('click', () => { if (fontStep > 0) { fontStep--; applyFont(); } });
+fontUpBtn.addEventListener('click', () => { if (fontStep < FONT_STEPS.length - 1) { fontStep++; applyFont(); } });
+applyFont();
 
 totalAllEl.textContent = QUESTIONS.length;
 buildSourceCheckboxes();
