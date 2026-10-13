@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Convert 生成式AI_情境模擬考題100題*.md (folded-details format) into 考試題目/題庫NN.md.
 
-Usage: python _raw/convert_scenario.py [1|2|all]   (default: all)
+Usage: python _raw/convert_scenario.py [1|2|3|all]   (default: all)
 Re-runnable: always regenerates the output files from the raw files. Explanations are kept in full,
 only markdown/LaTeX markup is converted to plain text (the quiz site renders plain text).
 """
@@ -49,6 +49,19 @@ VOLUMES = {
              '`"Polish"`（**波蘭的／波蘭語**）；小寫後變成 `"polish"`'),
         ],
     ),
+    "3": dict(
+        raw="生成式AI_情境模擬考題100題_第3卷.md",
+        out="題庫11.md",
+        offset=459,
+        title=f"{BOOK} - 情境模擬題 第3卷",
+        caveats={
+            36: "Chatbot Arena 已於2025年由 LMSYS 獨立成立公司並更名為 LMArena；就「創立並推動該排行榜的組織」而言，A仍為最佳答案。",
+            67: "神經風格轉換實際上是從多個網路層（含淺層與深層）計算 Gram 矩陣擷取風格，並非僅用較淺層；「深層抓內容、淺層抓風格」為筆記的簡化說法，依此作答即可。",
+            95: "Sora 實際採用 Diffusion Transformer（DiT），Transformer 本身就是執行去噪的主幹網路；「Diffusion 畫圖、Transformer 當導演」是筆記的簡化比喻。",
+            98: "題幹所述「轉換為隨機代號、未持有密鑰無法還原」嚴格來說屬於假名化（Pseudonymization），仍可能被視為個人資料；但在四個選項中，去識別化（De-identification）作為統稱仍是最佳答案。",
+        },
+        fixes=[],
+    ),
 }
 
 LATEX_MAP = [
@@ -56,6 +69,7 @@ LATEX_MAP = [
     (r"\sum", "Σ"), (r"\sim", "～"), (r"\times", "×"), (r"\odot", "⊙"),
     (r"\mu", "μ"), (r"\sigma", "σ"), (r"\theta", "θ"), (r"\epsilon", "ε"),
     (r"^\circ", "°"), (r"\cos", "cos"), (r"\exp", "exp"),
+    (r"\infty", "∞"), (r"\pm", "±"), (r"\max", "max"),
     ("R^2", "R²"), ("10^2", "10²"), ("V_1", "V₁"),
 ]
 SUP = str.maketrans("0123456789T-", "⁰¹²³⁴⁵⁶⁷⁸⁹ᵀ⁻")
@@ -78,13 +92,14 @@ def latex_text(t):
         t = t.replace(a, b)
     t = re.sub(r"\^\{?([0-9T-]+)\}?", lambda m: m.group(1).translate(SUP), t)
     t = re.sub(r"_\{?([0-9ikt-]+)\}?", lambda m: m.group(1).translate(SUB), t)
+    t = re.sub(r"_\{([^{}]*)\}", lambda m: f"({m.group(1)})", t)  # 其他下標（如中文）改用括號，例：y(預測)
     return re.sub(r"\s+", " ", t).strip()
 
 
 def plain(s):
     """Strip markdown/LaTeX markup to plain text."""
     s = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", s)  # [text](link) -> text
-    s = s.replace("**", "").replace("`", "")
+    s = s.replace("**", "").replace("`", "").replace('\\"', '"')
     s = re.sub(r"\$\$([^$\n]+)\$\$", lambda m: latex_text(m.group(1)), s)
     s = re.sub(r"\$([^$\n]+)\$", lambda m: latex_text(m.group(1)), s)
     return s
