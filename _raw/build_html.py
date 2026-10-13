@@ -331,7 +331,7 @@ function buildSourceCheckboxes() {
     const count = QUESTIONS.filter(q => q.source === s).length;
     const topics = [...new Set(QUESTIONS.filter(q => q.source === s).map(q => q.topic))].join('、');
     return `<label class="chk">
-      <input type="checkbox" class="srcChk" value="${s}" checked>
+      <input type="checkbox" class="srcChk" value="${s}">
       ${s}（${count}題・${topics}）
     </label>`;
   }).join('');
@@ -364,6 +364,7 @@ function updatePoolCount() {
   poolCountEl.textContent = size;
   limitCountEl.max = size || 1;
   effectiveCountEl.textContent = getEffectiveCount(size);
+  startBtn.disabled = size === 0;
 }
 
 function startQuiz() {
